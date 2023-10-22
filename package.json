@@ -5,11 +5,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cors-anywhere": "node ./cors-anywhere.js"
   },
   "dependencies": {
     "@types/p5": "^1.7.1",
-    "p5": "^1.7.0",
+    "p5": "^1.7.0"
+  },
+  "devDependencies": {
+    "cors-anywhere": "^0.4.4",
     "typescript": "^5.2.2",
     "vite": "^4.5.0"
   }

@@ -384,6 +384,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cors-anywhere@npm:^0.4.4":
+  version: 0.4.4
+  resolution: "cors-anywhere@npm:0.4.4"
+  dependencies:
+    http-proxy: "npm:1.11.1"
+    proxy-from-env: "npm:0.0.1"
+  checksum: 71cfc61c6c50521993c3c1b2086c52359a6c161c12fffb4c24f14864f4ea1d9fbad6f25e677d7e5dadfb77db894cbc09850ff88b45c1d66a5e81fe77a06e6e5c
+  languageName: node
+  linkType: hard
+
 "cross-spawn@npm:^7.0.0":
   version: 7.0.3
   resolution: "cross-spawn@npm:7.0.3"
@@ -535,6 +545,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eventemitter3@npm:1.x.x":
+  version: 1.2.0
+  resolution: "eventemitter3@npm:1.2.0"
+  checksum: 8fb54d4b00d87d0d43fe9bfd4f07bb27702a8f9f23cfa3ac854470b6e23d2868501198a74494c54a8585f8d99e0ef7f63ff926623883c13b4f93e585184867a5
+  languageName: node
+  linkType: hard
+
 "exponential-backoff@npm:^3.1.1":
   version: 3.1.1
   resolution: "exponential-backoff@npm:3.1.1"
@@ -670,6 +687,16 @@ __metadata:
     agent-base: "npm:6"
     debug: "npm:4"
   checksum: 32a05e413430b2c1e542e5c74b38a9f14865301dd69dff2e53ddb684989440e3d2ce0c4b64d25eb63cf6283e6265ff979a61cf93e3ca3d23047ddfdc8df34a32
+  languageName: node
+  linkType: hard
+
+"http-proxy@npm:1.11.1":
+  version: 1.11.1
+  resolution: "http-proxy@npm:1.11.1"
+  dependencies:
+    eventemitter3: "npm:1.x.x"
+    requires-port: "npm:0.x.x"
+  checksum: 800487c1550af0e793be008cff3a05be9628fb99a00d3d4bc6b3b78832cba25641cde210033c835045cee916bcf90831cd0e99d9524b2a2bcb868cf62304e4c8
   languageName: node
   linkType: hard
 
@@ -1081,6 +1108,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"proxy-from-env@npm:0.0.1":
+  version: 0.0.1
+  resolution: "proxy-from-env@npm:0.0.1"
+  checksum: 4c5ab952df0b13a3aae98c40cbe90acecdb6a7193905481ae48d6481330370f8af3bec52b44a6f6f0724a5e4b5a426b1f04c84112fc9f48b75cbc201d608dd1e
+  languageName: node
+  linkType: hard
+
 "readable-stream@npm:^3.6.0":
   version: 3.6.2
   resolution: "readable-stream@npm:3.6.2"
@@ -1089,6 +1123,13 @@ __metadata:
     string_decoder: "npm:^1.1.1"
     util-deprecate: "npm:^1.0.1"
   checksum: e37be5c79c376fdd088a45fa31ea2e423e5d48854be7a22a58869b4e84d25047b193f6acb54f1012331e1bcd667ffb569c01b99d36b0bd59658fb33f513511b7
+  languageName: node
+  linkType: hard
+
+"requires-port@npm:0.x.x":
+  version: 0.0.1
+  resolution: "requires-port@npm:0.0.1"
+  checksum: 3f727440d2d1b370e73a1286fa0aadbbc21777601aebf6ea79b205821cbe194c4c4cff1accd1491de5284a27bd562e38fa38fe078f34dec253f43c5a872fe3ec
   languageName: node
   linkType: hard
 
@@ -1143,6 +1184,7 @@ __metadata:
   resolution: "seminar-01-source@workspace:."
   dependencies:
     "@types/p5": "npm:^1.7.1"
+    cors-anywhere: "npm:^0.4.4"
     p5: "npm:^1.7.0"
     typescript: "npm:^5.2.2"
     vite: "npm:^4.5.0"
