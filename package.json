@@ -1,0 +1,16 @@
+{
+  "name": "seminar-01-source",
+  "packageManager": "yarn@4.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@types/p5": "^1.7.1",
+    "p5": "^1.7.0",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0"
+  }
+}
