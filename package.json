@@ -9,12 +9,20 @@
     "cors-anywhere": "node ./cors-anywhere.js"
   },
   "dependencies": {
-    "@types/p5": "^1.7.1",
+    "leaflet": "^1.9.4",
     "p5": "^1.7.0"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.7",
+    "@types/p5": "^1.7.1",
     "cors-anywhere": "^0.4.4",
+    "sass": "^1.69.4",
     "typescript": "^5.2.2",
     "vite": "^4.5.0"
+  },
+  "dependenciesMeta": {
+    "vite@4.5.0": {
+      "unplugged": true
+    }
   }
 }

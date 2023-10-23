@@ -1,0 +1,105 @@
+////
+/// Common styles and mixins.
+/// @author Simon Goričar
+////
+
+///
+/// Will unquote the argument if it is a string.
+/// @access private
+///
+@function _unquote-if-string($var) {
+    @if type-of($var) == string {
+        @return unquote($var);
+    }
+
+    @else {
+        @return $var;
+    }
+}
+
+///
+/// Creates flex rules for centering.
+/// In general use flexRowCenter/flexColumnCenter mixins instead.
+///
+@mixin _flex-center-rules($direction, $justify-content-center, $align-items-center) {
+    display: flex;
+    flex-direction: unquote($direction);
+
+    @if $justify-content-center {
+        justify-content: center;
+    }
+
+    @if $align-items-center {
+        align-items: center;
+    }
+}
+
+///
+/// Creates flex (row) rules for centering.
+///
+@mixin flex-row-center($horizontal: true, $vertical: true) {
+    @include _flex-center-rules("row", $horizontal, $vertical);
+}
+
+///
+/// Creates flex (column) rules for centering.
+///
+@mixin flex-column-center($horizontal: true, $vertical: true) {
+    @include _flex-center-rules("column", $vertical, $horizontal);
+}
+
+///
+/// Generates width and height rules for a sizeRectangle.
+/// If only one argument is passed, both rules will be the same (a square).
+///
+@mixin size-rectangle($width, $height: $width) {
+    height: _unquote-if-string($height);
+    width: _unquote-if-string($width);
+}
+
+///
+/// Generates top, right, bottom, left rules. Supports one, two, three or four arguments.
+/// Generally use relativePos/absolutePos/fixedPos/stickyPos mixins instead.
+///
+@mixin _positioning($top: 0, $right: $top, $bottom: $top, $left: $right) {
+    bottom: _unquote-if-string($bottom);
+    left: _unquote-if-string($left);
+    right: _unquote-if-string($right);
+    top: _unquote-if-string($top);
+}
+
+///
+/// Generates a complete rule with "position: relative" and "top/right/bottom/left" rules.
+///
+@mixin relative-pos($top: 0, $right: $top, $bottom: $top, $left: $right) {
+    @include _positioning($top, $right, $bottom, $left);
+
+    position: relative;
+}
+
+///
+/// Generates a complete rule with "position: absolute" and "top/right/bottom/left" rules.
+///
+@mixin absolute-pos($top: 0, $right: $top, $bottom: $top, $left: $right) {
+    @include _positioning($top, $right, $bottom, $left);
+
+    position: absolute;
+}
+
+///
+/// Generates a complete rule with "position: absolute" and "top/right/bottom/left" rules.
+///
+@mixin fixed-pos($top: 0, $right: $top, $bottom: $top, $left: $right) {
+    @include _positioning($top, $right, $bottom, $left);
+
+    position: fixed;
+}
+
+///
+/// Generates a complete rule with "position: absolute" and "top/right/bottom/left" rules.
+///
+@mixin sticky-pos($top: 0, $right: $top, $bottom: $top, $left: $right) {
+    @include _positioning($top, $right, $bottom, $left);
+
+    position: sticky;
+}

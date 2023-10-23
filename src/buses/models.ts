@@ -1,5 +1,6 @@
 import { getRequiredField } from "../core/utilities.ts";
 import { ResponseContentError } from "../core/errors.ts";
+import { LatLng } from "leaflet";
 
 export type RawStationDetails = {
     int_id: number,
@@ -78,6 +79,10 @@ export class StationDetails {
           stationCode,
           routeGroupsOnStation
         );
+    }
+
+    public latLng(): LatLng {
+        return new LatLng(this.latitude, this.longitude)
     }
 
     public toString(): string {

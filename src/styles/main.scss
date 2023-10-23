@@ -1,0 +1,27 @@
+/**
+ * This SCSS file serves as an entry file for the entire stylesheet.
+ */
+
+///
+// Load libraries
+///
+@use "vendor/normalize";
+@use "vendor/purecss";
+// include-media is loaded on demand with the "media" module.
+@use "vendor/leaflet/leaflet.css";
+
+@use "vars" as vars;
+
+
+///
+// Load base SCSS
+///
+@use "base/defaults";
+@use "base/fonts";
+
+
+///
+// Load all layouts
+///
+@use "layout/app";
+@use "layout/map";

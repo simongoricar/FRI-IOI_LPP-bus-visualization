@@ -7,9 +7,12 @@ import { isObject } from "../core/utilities.ts";
 export const LPP_API_BASE_URL: string = "http://localhost:8855/https://data.lpp.si/api/";
 export const LPP_API_DEFAULT_FETCH_OPTIONS: RequestInit = {
     method: "GET",
-    cache: "no-cache",
     mode: "cors",
     credentials: "omit",
+};
+
+export type GetAllStationsOptions = {
+    cache?: boolean
 };
 
 /**
@@ -73,12 +76,16 @@ export class LPPBusAPI {
     /**
      * Returns a list of all available stations.
      */
-    async getAllStations(): Promise<StationDetails[]> {
+    async getAllStations(options?: GetAllStationsOptions): Promise<StationDetails[]> {
         const STATION_DETAILS_URL = constructLppApiUrl("station/station-details");
+        const cacheResult = options?.cache || true;
 
         this.logger.info("Requesting all stations.");
 
-        const response = await fetch(STATION_DETAILS_URL, LPP_API_DEFAULT_FETCH_OPTIONS);
+        const response = await fetch(STATION_DETAILS_URL, {
+            cache: cacheResult ? "default" : "reload",
+            ...LPP_API_DEFAULT_FETCH_OPTIONS
+        });
         validateAsJSONResponse(response, { requestPath: STATION_DETAILS_URL });
         const responseJson = await extractJSONFromResponse(response);
 

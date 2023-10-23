@@ -1,0 +1,129 @@
+////
+/// _media.scss
+/// A set set of customizations and @forwards for include-media
+/// (https://eduardoboucas.github.io/include-media)
+////
+
+/// Breakpoint sizes inspired by
+/// https://www.freecodecamp.org/news/the-100-correct-way-to-do-css-breakpoints-88d6a5ba1862/
+/// The include-media library is loaded with these breakpoints.
+$media-breakpoints: (
+    "phone": 599px,
+    "tablet-portrait": 600px,
+    "tablet-landscape": 1000px,
+    "laptop": 1200px,
+    "desktop": 1800px
+);
+
+@use "../vendor/include-media/include-media" as im with (
+    $breakpoints: $media-breakpoints
+);
+
+@forward "../vendor/include-media/include-media" as im-*;
+
+////
+/// Handy include-media shortcut mixins
+////
+
+///
+/// Syntactic sugar for media query "<=phone"
+/// @content @media rule content
+///
+@mixin onlyPhone {
+    @include im.media("<=phone") {
+        @content;
+    }
+}
+
+///
+/// Syntactic sugar for media query "<tablet-landscape"
+/// @content @media rule content
+///
+@mixin upToTabletPortrait {
+    @include im.media("<tablet-landscape") {
+        @content;
+    }
+}
+
+///
+/// Syntactic sugar for media query ">=tablet-portrait"
+/// @content @media rule content
+///
+@mixin tabletPortraitUp {
+    @include im.media(">=tablet-portrait") {
+        @content;
+    }
+}
+
+///
+/// Syntactic sugar for media query "<laptop"
+/// @content @media rule content
+///
+@mixin upToTabletLandscape {
+    @include im.media("<laptop") {
+        @content;
+    }
+}
+
+///
+/// Syntactic sugar for media query ">=tablet-landscape"
+/// @content @media rule content
+///
+@mixin tabletLandscapeUp {
+    @include im.media(">=tablet-landscape") {
+        @content;
+    }
+}
+
+///
+/// Syntactic sugar for media query "<desktop"
+/// @content @media rule content
+///
+@mixin upToLaptop {
+    @include im.media("<desktop") {
+        @content;
+    }
+}
+
+///
+/// Syntactic sugar for media query ">=laptop"
+/// @content @media rule content
+///
+@mixin laptopUp {
+    @include im.media(">=laptop") {
+        @content;
+    }
+}
+///
+/// Syntactic sugar for media query ">=desktop"
+/// @content @media rule content
+///
+@mixin desktopUp {
+    @include im.media(">=desktop") {
+        @content;
+    }
+}
+
+/////
+/// Other handy @media mixins
+/////
+
+///
+/// Syntactic sugar for media query "prefers-color-scheme: dark"
+/// @content @media rule content
+///
+@mixin onDarkMode {
+    @media (prefers-color-scheme: dark) {
+        @content;
+    }
+}
+
+///
+/// Syntactic sugar for media query "prefers-reduced-motion"
+/// @content @media rule content
+///
+@mixin onReducedMotion {
+    @media (prefers-reduced-motion) {
+        @content;
+    }
+}
