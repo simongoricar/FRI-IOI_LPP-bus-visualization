@@ -1,3 +1,5 @@
+@use "../vars" as vars;
+
 .map-container {
   display: flex;
   flex-direction: column;
@@ -19,7 +21,9 @@
   display: block;
 }
 
-#map .leaflet-control-attribution {
-
+#map {
+  .station-popup .leaflet-popup-content {
+    font-size: 1.6rem;
+    margin: 8px 10px 8px 10px;
+  }
 }
-
