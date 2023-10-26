@@ -1,0 +1,9 @@
+[logging]
+console_output_level = "DEBUG"
+log_file_output_level = "INFO"
+log_file_output_directory = "./logs/"
+
+
+[lpp]
+lpp_base_api_url = "https://data.lpp.si/api/"
+user_agent = "visualization-recorder / 1.0.0"

@@ -298,7 +298,7 @@ impl From<RawTimetableRoute> for RouteTimetable {
         let stations = value
             .stations
             .into_iter()
-            .map(|raw_station| RouteStationEntry::from(raw_station))
+            .map(RouteStationEntry::from)
             .collect::<Vec<_>>();
 
         Self {
@@ -387,6 +387,7 @@ where
         url_query_pairs.append_pair("route-group-number", station_code.as_ref());
     }
 
+    drop(url_query_pairs);
 
     Ok(url)
 }
@@ -428,9 +429,9 @@ where
             );
         }
 
-        return Err(LppApiFetchError::ClientError(response_status));
+        return Err(LppApiFetchError::ClientHTTPError(response_status));
     } else if response_status.is_server_error() {
-        return Err(LppApiFetchError::ServerError(response_status));
+        return Err(LppApiFetchError::ServerHTTPError(response_status));
     }
 
 
@@ -440,7 +441,7 @@ where
         .map_err(LppApiFetchError::ResponseDecodingError)?;
 
     if !response_raw_json.success {
-        return Err(LppApiFetchError::APIResponseError {
+        return Err(LppApiFetchError::APIResponseNotSuccessful {
             reason: String::from("success field is false"),
         });
     }
@@ -450,8 +451,43 @@ where
         .data
         .route_groups
         .into_iter()
-        .map(|raw_route_group_data| RouteGroupTimetable::from(raw_route_group_data))
+        .map(RouteGroupTimetable::from)
         .collect();
 
     Ok(route_group_timetables)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn properly_build_timetable_url() {
+        let api_configuration = LppApiConfiguration {
+            lpp_base_api_url: Url::parse("https://data.lpp.si/api/").unwrap(),
+            user_agent: String::from("visualization-recorder / 1.0.0"),
+        };
+
+
+        assert_eq!(
+            build_timetable_url(
+                &api_configuration,
+                "600012",
+                ["3"],
+                &TimetableFetchMode::Manual { next_hours: 12, previous_hours: 12 },
+            ).unwrap(),
+            Url::parse("https://data.lpp.si/api/station/timetable?station-code=600012&next-hours=12&previous-hours=12&route-group-number=3").unwrap()
+        );
+
+        assert_eq!(
+            build_timetable_url(
+                &api_configuration,
+                "600012",
+                ["3", "18"],
+                &TimetableFetchMode::Manual { next_hours: 12, previous_hours: 12 },
+            ).unwrap(),
+            Url::parse("https://data.lpp.si/api/station/timetable?station-code=600012&next-hours=12&previous-hours=12&route-group-number=3&route-group-number=18").unwrap()
+        );
+    }
 }

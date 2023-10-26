@@ -21,13 +21,13 @@ pub enum LppApiFetchError {
 
     /// This can happend when e.g. the `success` field is set to `false` in the JSON response.
     #[error("Request was not successful: {reason}")]
-    APIResponseError { reason: String },
+    APIResponseNotSuccessful { reason: String },
 
-    #[error("Requested failed with client error: {0}")]
-    ClientError(StatusCode),
+    #[error("HTTP request failed with client error: {0}")]
+    ClientHTTPError(StatusCode),
 
-    #[error("Requested failed with server error: {0}")]
-    ServerError(StatusCode),
+    #[error("HTTP request failed with server error: {0}")]
+    ServerHTTPError(StatusCode),
 
     #[error("Failed to decode JSON response: {0}")]
     ResponseDecodingError(reqwest::Error),

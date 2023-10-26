@@ -194,9 +194,9 @@ pub async fn fetch_all_routes(
             );
         }
 
-        return Err(LppApiFetchError::ClientError(response_status));
+        return Err(LppApiFetchError::ClientHTTPError(response_status));
     } else if response_status.is_server_error() {
-        return Err(LppApiFetchError::ServerError(response_status));
+        return Err(LppApiFetchError::ServerHTTPError(response_status));
     }
 
 
@@ -206,7 +206,7 @@ pub async fn fetch_all_routes(
         .map_err(LppApiFetchError::ResponseDecodingError)?;
 
     if !response_raw_json.success {
-        return Err(LppApiFetchError::APIResponseError {
+        return Err(LppApiFetchError::APIResponseNotSuccessful {
             reason: String::from("success field is false"),
         });
     }
@@ -247,9 +247,9 @@ where
             );
         }
 
-        return Err(LppApiFetchError::ClientError(response_status));
+        return Err(LppApiFetchError::ClientHTTPError(response_status));
     } else if response_status.is_server_error() {
-        return Err(LppApiFetchError::ServerError(response_status));
+        return Err(LppApiFetchError::ServerHTTPError(response_status));
     }
 
 
@@ -259,22 +259,21 @@ where
         .map_err(LppApiFetchError::ResponseDecodingError)?;
 
     if !response_raw_json.success {
-        return Err(LppApiFetchError::APIResponseError {
+        return Err(LppApiFetchError::APIResponseNotSuccessful {
             reason: String::from("success field is false"),
         });
     }
 
 
     for route_details in &response_raw_json.data {
-        route_details
-            .route_shape
-            .validate_type()
-            .map_err(|_| LppApiFetchError::APIResponseError {
+        route_details.route_shape.validate_type().map_err(|_| {
+            LppApiFetchError::APIResponseNotSuccessful {
                 reason: format!(
                     "Expected geojson_shape.type to be LineString, got {}!",
                     route_details.route_shape.r#type
                 ),
-            });
+            }
+        });
     }
 
     Ok(response_raw_json.data)

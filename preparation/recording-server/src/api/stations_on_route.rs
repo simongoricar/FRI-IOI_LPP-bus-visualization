@@ -105,9 +105,9 @@ where
             );
         }
 
-        return Err(LppApiFetchError::ClientError(response_status));
+        return Err(LppApiFetchError::ClientHTTPError(response_status));
     } else if response_status.is_server_error() {
-        return Err(LppApiFetchError::ServerError(response_status));
+        return Err(LppApiFetchError::ServerHTTPError(response_status));
     }
 
 
@@ -117,7 +117,7 @@ where
         .map_err(LppApiFetchError::ResponseDecodingError)?;
 
     if !response_raw_json.success {
-        return Err(LppApiFetchError::APIResponseError {
+        return Err(LppApiFetchError::APIResponseNotSuccessful {
             reason: String::from("success field is false"),
         });
     }
