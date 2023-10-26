@@ -18,7 +18,7 @@ pub struct StationOnRoute {
     ///
     /// Example: `3307`.
     ///
-    /// LPP documentation: "".
+    /// LPP documentation: "Integer ID of station".
     pub station_int_id: i32,
 
     /// Unique bus station reference (?) identifier used in other requests.
