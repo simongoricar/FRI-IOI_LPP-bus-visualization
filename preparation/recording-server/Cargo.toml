@@ -6,9 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+chrono = { version = "0.4.31", features = ["serde"] }
 miette = { version = "5.10.0", features = ["fancy"] }
 reqwest = { version = "0.11.22", features = ["gzip", "json"] }
 serde = { version = "1.0.189", features = ["derive"] }
+serde_with = { version = "3.4.0", features = ["chrono_0_4"] }
 thiserror = "1.0.50"
 tokio = { version = "1.33.0", features = ["full"] }
 toml = "0.8.4"
