@@ -23,6 +23,9 @@ pub enum LppApiFetchError {
     #[error("Request was not successful: {reason}")]
     APIResponseNotSuccessful { reason: String },
 
+    #[error("Received response was malformed or the schema changed.")]
+    APIResponseMalformed,
+
     #[error("HTTP request failed with client error: {0}")]
     ClientHTTPError(StatusCode),
 

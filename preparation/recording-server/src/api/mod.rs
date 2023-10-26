@@ -1,3 +1,4 @@
+pub mod arrivals_on_route;
 pub mod errors;
 pub mod routes;
 pub mod station_details;
