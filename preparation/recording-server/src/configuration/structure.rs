@@ -5,16 +5,22 @@ use std::{
 };
 
 use miette::{miette, Context, IntoDiagnostic, Result};
-use serde::{Deserialize, Serialize};
+use reqwest::Url;
+use serde::Deserialize;
 
 use super::{
-    traits::{InitializableAfterLoad, InitializableAfterLoadWithPaths},
+    traits::ResolvableConfiguration,
     utilities::{get_default_configuration_file_path, replace_placeholders_in_path},
 };
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct Configuration {
-    // TODO
+    pub lpp: LppApiConfiguration,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct UnresolvedConfiguration {
+    pub lpp: UnresolvedLppApiConfiguration,
 }
 
 impl Configuration {
@@ -25,13 +31,16 @@ impl Configuration {
             .into_diagnostic()
             .wrap_err_with(|| miette!("Failed to read configuration file."))?;
 
-        let mut configuration: Self = toml::from_str(&configuration_file_contents)
-            .into_diagnostic()
-            .wrap_err_with(|| miette!("Failed to parse configuration file as TOML."))?;
+        let mut unresolved_configuration: UnresolvedConfiguration =
+            toml::from_str(&configuration_file_contents)
+                .into_diagnostic()
+                .wrap_err_with(|| miette!("Failed to parse configuration file as TOML."))?;
 
-        configuration.initialize()?;
+        let resolved_configuration = unresolved_configuration
+            .resolve()
+            .wrap_err_with(|| miette!("Failed to resolve configuration."))?;
 
-        Ok(configuration)
+        Ok(resolved_configuration)
     }
 
     pub fn load_from_default_path() -> Result<Self> {
@@ -42,8 +51,43 @@ impl Configuration {
     }
 }
 
-impl InitializableAfterLoad for Configuration {
-    fn initialize(&mut self) -> Result<()> {
-        todo!();
+impl ResolvableConfiguration for UnresolvedConfiguration {
+    type Resolved = Configuration;
+
+    fn resolve(self) -> Result<Self::Resolved> {
+        let lpp = self
+            .lpp
+            .resolve()
+            .wrap_err_with(|| miette!("Failed to resolve table \"lpp\"."))?;
+
+        Ok(Self::Resolved { lpp })
+    }
+}
+
+
+#[derive(Deserialize, Clone)]
+struct UnresolvedLppApiConfiguration {
+    lpp_base_api_url: String,
+    user_agent: String,
+}
+
+#[derive(Clone)]
+pub struct LppApiConfiguration {
+    pub lpp_base_api_url: Url,
+    pub user_agent: String,
+}
+
+impl ResolvableConfiguration for UnresolvedLppApiConfiguration {
+    type Resolved = LppApiConfiguration;
+
+    fn resolve(self) -> Result<Self::Resolved> {
+        let lpp_base_api_url = Url::parse(&self.lpp_base_api_url)
+            .into_diagnostic()
+            .wrap_err_with(|| miette!("Failed to parse lpp_base_api_url as an URL!"))?;
+
+        Ok(Self::Resolved {
+            lpp_base_api_url,
+            user_agent: self.user_agent,
+        })
     }
 }

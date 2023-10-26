@@ -12,6 +12,7 @@ use tracing_subscriber::{
 };
 
 mod configuration;
+mod api;
 
 /// Initialize the console and file logging.
 ///
