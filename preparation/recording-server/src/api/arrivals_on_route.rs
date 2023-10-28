@@ -1,4 +1,4 @@
-use miette::{miette, ErrReport, Result};
+use miette::{miette, Result};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use tracing::warn;
@@ -202,7 +202,7 @@ impl TryFrom<RawStationArrivalDetails> for StationArrivalDetails {
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ArrivalEstimation {
-    LiveEstimation { eta_in_minutes: u32 },
+    LocationBased { eta_in_minutes: u32 },
     TimetableBased { eta_in_minutes: u32 },
     CurrentlyArrivingToStation,
     OnDetour,
@@ -243,7 +243,7 @@ impl TryFrom<RawArrivalData> for ArrivalData {
             .map_err(|_| miette!("Invalid value of field `eta_min`: not u32"))?;
 
         let estimation = match value.r#type {
-            0 => ArrivalEstimation::LiveEstimation { eta_in_minutes },
+            0 => ArrivalEstimation::LocationBased { eta_in_minutes },
             1 => ArrivalEstimation::TimetableBased { eta_in_minutes },
             2 => ArrivalEstimation::CurrentlyArrivingToStation,
             3 => ArrivalEstimation::OnDetour,
@@ -348,7 +348,7 @@ where
         .into_iter()
         .map(StationArrivalDetails::try_from)
         .collect::<Result<Vec<_>>>()
-        .map_err(|_| LppApiFetchError::APIResponseMalformed)?;
+        .map_err(|error| LppApiFetchError::malformed_response_with_reason(error.to_string()))?;
 
     Ok(parsed_details)
 }

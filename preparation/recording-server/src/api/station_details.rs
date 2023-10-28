@@ -3,17 +3,26 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 use url::Url;
 
-use super::errors::{FullUrlConstructionError, LppApiFetchError};
+use super::{
+    errors::{FullUrlConstructionError, LppApiFetchError},
+    BusRoute,
+    BusStationCode,
+    Location,
+};
 use crate::configuration::structure::LppApiConfiguration;
+
+/*
+ * RAW RESPONSE SCHEMAS
+ */
 
 #[derive(Serialize, Deserialize, Clone)]
 struct RawStationDetailsResponse {
-    pub success: bool,
-    pub data: Vec<StationDetails>,
+    success: bool,
+    data: Vec<RawStationDetails>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct StationDetails {
+struct RawStationDetails {
     /// Unique internal station identifier.
     ///
     /// Example: `3307`.
@@ -66,6 +75,67 @@ pub struct StationDetails {
     pub routes_on_station: Vec<String>,
 }
 
+
+/*
+ * PARSED RESPONSE SCHEMAS
+ */
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct StationDetails {
+    /// Unique bus station identifier
+    /// (useful in other station-related requests).
+    ///
+    /// Example: `201011`.
+    pub station_code: BusStationCode,
+
+    /// Unique *internal* station identifier.
+    /// Unused in other parts of the API.
+    ///
+    /// Example: `3307`.
+    pub internal_station_id: i32,
+
+    /// Geographical location of the bus station.
+    pub location: Location,
+
+    /// Name of the bus station.
+    ///
+    /// Example: `ŽELEZNA`.
+    pub name: String,
+
+    /// A list of all routes that stop on this bus station.
+    /// This includes "sub-routes", such as "12D" or "N3B".
+    ///
+    /// Example: `["3G", "11B", "12", "12D"]`.
+    pub routes_on_station: Vec<BusRoute>,
+}
+
+impl TryFrom<RawStationDetails> for StationDetails {
+    type Error = miette::Report;
+
+    fn try_from(value: RawStationDetails) -> Result<Self, Self::Error> {
+        let station_code = BusStationCode::new(value.station_code);
+        let location = Location::new(value.latitude, value.longitude);
+
+        let routes_on_station = value
+            .routes_on_station
+            .into_iter()
+            .map(BusRoute::try_from)
+            .collect::<Result<_, _>>()?;
+
+        Ok(Self {
+            station_code,
+            internal_station_id: value.station_int_id,
+            location,
+            name: value.name,
+            routes_on_station,
+        })
+    }
+}
+
+
+/*
+ * FETCHING
+ */
 
 
 fn build_station_details_url(
@@ -126,5 +196,13 @@ pub async fn fetch_station_details(
         });
     }
 
-    Ok(response_raw_json.data)
+
+    let parsed_details = response_raw_json
+        .data
+        .into_iter()
+        .map(StationDetails::try_from)
+        .collect::<Result<_, _>>()
+        .map_err(|error| LppApiFetchError::malformed_response_with_reason(error.to_string()))?;
+
+    Ok(parsed_details)
 }

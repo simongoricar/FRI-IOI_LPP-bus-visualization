@@ -1,3 +1,4 @@
+use miette::Diagnostic;
 use reqwest::StatusCode;
 use thiserror::Error;
 
@@ -23,8 +24,14 @@ pub enum LppApiFetchError {
     #[error("Request was not successful: {reason}")]
     APIResponseNotSuccessful { reason: String },
 
-    #[error("Received response was malformed or the schema changed.")]
-    APIResponseMalformed,
+    #[error(
+        "Received response was malformed (or did the schema change?).{}",
+        match reason.as_ref() {
+            Some(reason) => reason,
+            None => ""
+        }
+    )]
+    APIResponseMalformed { reason: Option<String> },
 
     #[error("HTTP request failed with client error: {0}")]
     ClientHTTPError(StatusCode),
@@ -34,4 +41,38 @@ pub enum LppApiFetchError {
 
     #[error("Failed to decode JSON response: {0}")]
     ResponseDecodingError(reqwest::Error),
+}
+
+impl LppApiFetchError {
+    pub fn malformed_response() -> Self {
+        Self::APIResponseMalformed { reason: None }
+    }
+
+    pub fn malformed_response_with_reason<S>(reason: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::APIResponseMalformed {
+            reason: Some(reason.into()),
+        }
+    }
+}
+
+
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Invalid bus route name: {}", route_name)]
+pub struct RouteNameParseError {
+    route_name: String,
+}
+
+impl RouteNameParseError {
+    pub fn new<S>(route_name: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            route_name: route_name.into(),
+        }
+    }
 }
