@@ -77,7 +77,7 @@ struct RawStationDetails {
  * PARSED RESPONSE SCHEMAS
  */
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StationDetails {
     /// Unique bus station identifier
     /// (useful in other station-related requests).

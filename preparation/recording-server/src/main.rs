@@ -7,6 +7,7 @@ mod api;
 mod cancellation_token;
 mod configuration;
 mod logging;
+mod recorder;
 mod storage;
 
 

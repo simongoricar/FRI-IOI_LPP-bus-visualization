@@ -5,10 +5,11 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
+use miette::Diagnostic;
 use thiserror::Error;
 
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Diagnostic)]
 pub enum StorageError {
     #[error("Expected \"{}\" to be a directory.", .path.display())]
     PathIsNotADirectory { path: PathBuf },

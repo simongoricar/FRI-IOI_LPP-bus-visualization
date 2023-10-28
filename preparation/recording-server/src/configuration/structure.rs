@@ -11,6 +11,7 @@ use serde::Deserialize;
 use tracing::Level;
 
 use super::{traits::ResolvableConfiguration, utilities::get_default_configuration_file_path};
+use crate::storage::StorageRoot;
 
 #[derive(Clone)]
 pub struct Configuration {
@@ -169,11 +170,13 @@ impl ResolvableConfiguration for UnresolvedLppApiConfiguration {
 struct UnresolvedLppRecordingConfiguration {
     station_details_fetching_interval: String,
     route_details_fetching_interval: String,
+    recording_storage_directory_path: String,
 }
 
 pub struct LppRecordingConfiguration {
-    station_details_fetching_interval: Duration,
-    route_details_fetching_interval: Duration,
+    pub station_details_fetching_interval: Duration,
+    pub route_details_fetching_interval: Duration,
+    pub recording_storage_root: StorageRoot,
 }
 
 impl ResolvableConfiguration for UnresolvedLppRecordingConfiguration {
@@ -200,10 +203,13 @@ impl ResolvableConfiguration for UnresolvedLppRecordingConfiguration {
                     )
                 })?;
 
+        let storage_root = StorageRoot::new(self.recording_storage_directory_path)?;
+
 
         Ok(Self::Resolved {
             station_details_fetching_interval,
             route_details_fetching_interval,
+            recording_storage_root: storage_root,
         })
     }
 }
