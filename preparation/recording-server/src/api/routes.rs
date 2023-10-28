@@ -10,7 +10,7 @@ use super::{
     RouteId,
     TripId,
 };
-use crate::configuration::structure::LppApiConfiguration;
+use crate::configuration::LppApiConfiguration;
 
 /*
  * RAW RESPONSE SCHEMAS

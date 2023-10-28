@@ -2,6 +2,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     str::FromStr,
+    time::Duration,
 };
 
 use miette::{miette, Context, IntoDiagnostic, Result};
@@ -69,6 +70,8 @@ impl ResolvableConfiguration for UnresolvedConfiguration {
     }
 }
 
+
+
 #[derive(Deserialize, Clone)]
 struct UnresolvedLoggingConfiguration {
     console_output_level: String,
@@ -110,6 +113,30 @@ impl ResolvableConfiguration for UnresolvedLoggingConfiguration {
 }
 
 
+
+struct UnresolvedLppConfiguration {
+    api: UnresolvedLppApiConfiguration,
+    recording: UnresolvedLppRecordingConfiguration,
+}
+
+pub struct LppConfiguration {
+    pub api: LppApiConfiguration,
+    pub recording: LppRecordingConfiguration,
+}
+
+impl ResolvableConfiguration for UnresolvedLppConfiguration {
+    type Resolved = LppConfiguration;
+
+    fn resolve(self) -> Result<Self::Resolved> {
+        Ok(Self::Resolved {
+            api: self.api.resolve()?,
+            recording: self.recording.resolve()?,
+        })
+    }
+}
+
+
+
 #[derive(Deserialize, Clone)]
 struct UnresolvedLppApiConfiguration {
     lpp_base_api_url: String,
@@ -133,6 +160,50 @@ impl ResolvableConfiguration for UnresolvedLppApiConfiguration {
         Ok(Self::Resolved {
             lpp_base_api_url,
             user_agent: self.user_agent,
+        })
+    }
+}
+
+
+
+struct UnresolvedLppRecordingConfiguration {
+    station_details_fetching_interval: String,
+    route_details_fetching_interval: String,
+}
+
+pub struct LppRecordingConfiguration {
+    station_details_fetching_interval: Duration,
+    route_details_fetching_interval: Duration,
+}
+
+impl ResolvableConfiguration for UnresolvedLppRecordingConfiguration {
+    type Resolved = LppRecordingConfiguration;
+
+    fn resolve(self) -> Result<Self::Resolved> {
+        let station_details_fetching_interval =
+            humantime::parse_duration(&self.station_details_fetching_interval)
+                .into_diagnostic()
+                .wrap_err_with(|| {
+                    miette!(
+                        "Failed to parse duration in field `station_details_fetching_interval`. \
+                        Did you include spaces (e.g. `6 hours` instead of `6hours`)?"
+                    )
+                })?;
+
+        let route_details_fetching_interval =
+            humantime::parse_duration(&self.route_details_fetching_interval)
+                .into_diagnostic()
+                .wrap_err_with(|| {
+                    miette!(
+                        "Failed to parse duration in field `route_details_fetching_interval`. \
+                    Did you include spaces (e.g. `6 hours` instead of `6hours`)?"
+                    )
+                })?;
+
+
+        Ok(Self::Resolved {
+            station_details_fetching_interval,
+            route_details_fetching_interval,
         })
     }
 }

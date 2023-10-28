@@ -9,7 +9,7 @@ use super::{
     BusStationCode,
     GeographicalLocation,
 };
-use crate::configuration::structure::LppApiConfiguration;
+use crate::configuration::LppApiConfiguration;
 
 /*
  * RAW RESPONSE SCHEMAS

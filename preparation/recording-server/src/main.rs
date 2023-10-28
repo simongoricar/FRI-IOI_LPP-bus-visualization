@@ -1,11 +1,13 @@
 use logging::initialize_tracing;
 use miette::{miette, Context, Result};
 
-use crate::configuration::structure::Configuration;
+use crate::configuration::Configuration;
 
 mod api;
+mod cancellation_token;
 mod configuration;
 mod logging;
+mod storage;
 
 
 fn main() -> Result<()> {

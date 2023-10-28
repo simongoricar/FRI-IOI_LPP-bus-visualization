@@ -9,7 +9,7 @@ use super::{
     BaseBusRoute,
     BusRoute,
 };
-use crate::configuration::structure::LppApiConfiguration;
+use crate::configuration::LppApiConfiguration;
 
 
 /*

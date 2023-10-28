@@ -5,5 +5,11 @@ log_file_output_directory = "./logs/"
 
 
 [lpp]
+[lpp.api]
 lpp_base_api_url = "https://data.lpp.si/api/"
 user_agent = "visualization-recorder / 1.0.0"
+
+[lpp.recording]
+station_details_fetching_interval = "6hours"
+route_details_fetching_interval = "6hours"
+
