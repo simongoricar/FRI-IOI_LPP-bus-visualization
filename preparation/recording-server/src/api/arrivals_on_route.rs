@@ -4,13 +4,24 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 use url::Url;
 
-use super::errors::{FullUrlConstructionError, LppApiFetchError};
+use super::{
+    errors::{FullUrlConstructionError, LppApiFetchError},
+    BusRoute,
+    BusStationCode,
+    GeographicalLocation,
+    RouteId,
+    VehicleId,
+};
 use crate::configuration::structure::LppApiConfiguration;
+
+/*
+ * RAW RESPONSE SCHEMAS
+ */
 
 #[derive(Serialize, Deserialize, Clone)]
 struct RawArrivalsOnRouteResponse {
-    pub success: bool,
-    pub data: Vec<RawStationArrivalDetails>,
+    success: bool,
+    data: Vec<RawStationArrivalDetails>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -20,21 +31,21 @@ struct RawStationArrivalDetails {
     /// Example: `3307`.
     ///
     /// LPP documentation: "Integer ID of station".
-    pub station_int_id: i32,
+    station_int_id: i32,
 
     /// Station name.
     ///
     /// Example: `ŽELEZNA`.
     ///
     /// LPP documentation: "Destination of route (direction)".
-    pub name: String,
+    name: String,
 
     /// Unique bus station reference (?) identifier used in other requests.
     ///
     /// Example: `201011`.
     ///
     /// LPP documentation: "Destination of route (direction)".
-    pub station_code: String,
+    station_code: String,
 
     /// Stop number (starts at 1 and is incremented for
     /// each next station on the bus route).
@@ -42,21 +53,21 @@ struct RawStationArrivalDetails {
     /// Example: `1`.
     ///
     /// LPP documentation: "Order of stations, 1 is starting station".
-    pub order_no: i32,
+    order_no: i32,
 
     /// Geographical latitude of the bus station.
     ///
     /// Example: `46.06103968748721`.
     ///
     /// LPP documentation: "Geographical latitude of station".
-    pub latitude: f64,
+    latitude: f64,
 
     /// Geographical longitude of the bus station.
     ///
     /// Longitude: `14.5132960445235`.
     ///
     /// LPP documentation: "Geographical longitude of station".
-    pub longitude: f64,
+    longitude: f64,
 
     /// Live arrival data (be it tabletime-based
     /// or from live GPS estimations - type of prediction is tagged).
@@ -64,7 +75,7 @@ struct RawStationArrivalDetails {
     /// LPP documentation: "Array of arrivals for this station.
     /// Only arrivals of busses driving on this route.
     /// Arrivals are ordered by ascending eta_min field.".
-    pub arrivals: Vec<RawArrivalData>,
+    arrivals: Vec<RawArrivalData>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -72,13 +83,13 @@ struct RawArrivalData {
     /// Unique route identifier belonging to this trip.
     ///
     /// LPP documentation: "ID of the route (parent of trip ID)".
-    pub route_id: String,
+    route_id: String,
 
     /// Internal LPP vehicle ID (the rest of the vehicle-related API is
     /// locked behind authentication).
     ///
     /// LPP documentation: "ID of the vehicle".
-    pub vehicle_id: String,
+    vehicle_id: String,
 
     /// Type of prediction in `eta_min`:
     /// - `0` means the field is a live estimation,
@@ -88,86 +99,70 @@ struct RawArrivalData {
     ///
     /// LPP documentation: "A type of arrival: (0 - predicted,
     /// 1 - scheduled, 2 - approaching station (prihod), 3 - detour (obvoz))"-
-    pub r#type: i32,
+    r#type: i32,
 
     /// Estimated time of arrival in minutes.
     ///
     /// LPP documentation: "Estimated time of arrival in minutes".
-    pub eta_min: i32,
+    eta_min: i32,
 
     /// Name of the route.
     ///
     /// Example: `1`.
     ///
     /// LPP documentation: "Name of route (1, 6B, N5...)".
-    pub route_name: String,
+    route_name: String,
 
     /// Full trip name.
     ///
     /// Example: `MESTNI LOG - VIŽMARJE`.
     ///
     /// LPP documentation: "Name of this trip, in format - ".
-    pub trip_name: String,
+    trip_name: String,
 
     /// - `0` if on normal route
     /// - `1` if heading to garage
     ///
     /// LPP documentation: "0 if normal route, 1 if vehicle is headed to garage".
-    pub depot: i32,
+    depot: i32,
 }
 
 
+/*
+ * PARSED RESPONSE SCHEMAS
+ */
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StationArrivalDetails {
-    /// Unique internal station identifier.
+    /// Unique bus station identifier
+    /// (useful in other station-related requests).
+    ///
+    /// Example: `201011`.
+    pub station_code: BusStationCode,
+
+    /// Unique *internal* station identifier.
+    /// Unused in other parts of the API.
     ///
     /// Example: `3307`.
-    ///
-    /// LPP documentation: "Integer ID of station".
-    pub station_int_id: u32,
+    pub internal_station_id: i32,
 
     /// Station name.
     ///
     /// Example: `ŽELEZNA`.
-    ///
-    /// LPP documentation: "Destination of route (direction)".
     pub name: String,
 
-    /// Unique bus station reference (?) identifier used in other requests.
-    ///
-    /// Example: `201011`.
-    ///
-    /// LPP documentation: "Destination of route (direction)".
-    pub station_code: String,
-
-    /// Stop number (starts at 1 and is incremented for
-    /// each next station on the bus route).
+    /// Stop number. Starts at 1 and is incremented for
+    /// each next station on the bus route.
     ///
     /// Example: `1`.
-    ///
-    /// LPP documentation: "Order of stations, 1 is starting station".
-    pub order_no: u32,
+    pub stop_number: u32,
 
-    /// Geographical latitude of the bus station.
-    ///
-    /// Example: `46.06103968748721`.
-    ///
-    /// LPP documentation: "Geographical latitude of station".
-    pub latitude: f64,
+    /// Geographical location of the bus station.
+    pub location: GeographicalLocation,
 
-    /// Geographical longitude of the bus station.
-    ///
-    /// Longitude: `14.5132960445235`.
-    ///
-    /// LPP documentation: "Geographical longitude of station".
-    pub longitude: f64,
-
-    /// Live arrival data (be it tabletime-based
-    /// or from live GPS estimations - type of prediction is tagged).
-    ///
-    /// LPP documentation: "Array of arrivals for this station.
-    /// Only arrivals of busses driving on this route.
-    /// Arrivals are ordered by ascending eta_min field.".
+    /// Arrival data. This can be be tabletime-based
+    /// or from live GPS estimations (though we don't have access
+    /// to the actual location). The prediction type is annotated.
     pub arrivals: Vec<ArrivalData>,
 }
 
@@ -176,10 +171,7 @@ impl TryFrom<RawStationArrivalDetails> for StationArrivalDetails {
     type Error = miette::Report;
 
     fn try_from(value: RawStationArrivalDetails) -> std::result::Result<Self, Self::Error> {
-        let station_int_id = u32::try_from(value.station_int_id)
-            .map_err(|_| miette!("Invalid value of field `station_int_id`: not u32"))?;
-
-        let order_no = u32::try_from(value.order_no)
+        let stop_number = u32::try_from(value.order_no)
             .map_err(|_| miette!("Invalid value of field `order_no`: not u32"))?;
 
         let arrivals = value
@@ -189,12 +181,11 @@ impl TryFrom<RawStationArrivalDetails> for StationArrivalDetails {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(Self {
-            station_int_id,
+            station_code: BusStationCode::new(value.station_code),
+            internal_station_id: value.station_int_id,
             name: value.name,
-            station_code: value.station_code,
-            order_no,
-            latitude: value.latitude,
-            longitude: value.longitude,
+            stop_number,
+            location: GeographicalLocation::new(value.latitude, value.longitude),
             arrivals,
         })
     }
@@ -202,35 +193,50 @@ impl TryFrom<RawStationArrivalDetails> for StationArrivalDetails {
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ArrivalEstimation {
+    /// Estimated time of arrival is derived from the bus location
+    /// (i.e. the bus is on its way).
     LocationBased { eta_in_minutes: u32 },
+
+    /// Estimated time of arrival is derived from the timetable
+    /// (i.e. the bus has not departed).
     TimetableBased { eta_in_minutes: u32 },
+
+    /// The bus is currently arriving to this bus station.
+    /// This variant is usually reported by the api
+    /// instead of [`Self::LocationBased`]`{ eta_in_minutes: 0}`.
     CurrentlyArrivingToStation,
+
+    /// The bus will not stop on this station due to a detour.
     OnDetour,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ArrivalData {
     /// Unique route identifier belonging to this trip.
-    pub route_id: String,
+    pub route_id: RouteId,
 
-    /// Internal LPP vehicle ID (the rest of the vehicle-related API is
-    /// locked behind authentication).
-    pub vehicle_id: String,
+    /// Internal LPP vehicle ID.
+    ///
+    /// The rest of the vehicle-related API is
+    /// locked behind authentication.
+    pub vehicle_id: VehicleId,
 
     /// Arrival estimation.
-    pub estimation: ArrivalEstimation,
+    pub arrival_estimation: ArrivalEstimation,
 
-    /// Name of the route.
+    /// Describes the full bus route number
+    /// (including any route prefix and/or suffix).
     ///
-    /// Example: `1`.
-    pub route_name: String,
+    /// Example: `1`, `3G`.
+    pub route: BusRoute,
 
     /// Full trip name.
     ///
     /// Example: `MESTNI LOG - VIŽMARJE`.
     pub trip_name: String,
 
-    /// Whether the bus is on a route that will, at some point, head to the garage.
+    /// Whether the bus is on a route that will, at some point,
+    /// head to the garage.
     pub heading_to_garage: bool,
 }
 
@@ -240,7 +246,7 @@ impl TryFrom<RawArrivalData> for ArrivalData {
 
     fn try_from(value: RawArrivalData) -> Result<Self, Self::Error> {
         let eta_in_minutes = u32::try_from(value.eta_min)
-            .map_err(|_| miette!("Invalid value of field `eta_min`: not u32"))?;
+            .map_err(|_| miette!("Invalid value for `eta_min` field: does not fit in u32"))?;
 
         let estimation = match value.r#type {
             0 => ArrivalEstimation::LocationBased { eta_in_minutes },
@@ -249,34 +255,40 @@ impl TryFrom<RawArrivalData> for ArrivalData {
             3 => ArrivalEstimation::OnDetour,
             unknown_value => {
                 return Err(miette!(
-                    "Invalid value of field `type`: expected 0/1/2/3, got {}",
+                    "Unrecognized `type` field value: expected 0/1/2/3, got {}",
                     unknown_value
                 ))
             }
         };
+
+        let route = BusRoute::from_route_name(value.route_name)?;
 
         let heading_to_garage = match value.depot {
             0 => false,
             1 => true,
             unknown_value => {
                 return Err(miette!(
-                    "Invalid value of field `depot`: expected 0/1, got {}",
+                    "Unrecognized `depot` field value: expected 0 or 1, got {}",
                     unknown_value
                 ))
             }
         };
 
         Ok(Self {
-            route_id: value.route_id,
-            vehicle_id: value.vehicle_id,
-            estimation,
-            route_name: value.route_name,
+            route_id: RouteId::new(value.route_id),
+            vehicle_id: VehicleId::new(value.vehicle_id),
+            arrival_estimation: estimation,
+            route,
             trip_name: value.trip_name,
             heading_to_garage,
         })
     }
 }
 
+
+/*
+ * FETCHING
+ */
 
 fn build_arrivals_on_route_url<T>(
     api_configuration: &LppApiConfiguration,
@@ -296,6 +308,7 @@ where
 
     Ok(url)
 }
+
 
 
 pub async fn fetch_arrivals_on_route<T>(

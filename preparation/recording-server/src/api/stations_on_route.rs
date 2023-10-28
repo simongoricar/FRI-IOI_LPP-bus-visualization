@@ -3,37 +3,45 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 use url::Url;
 
-use super::errors::{FullUrlConstructionError, LppApiFetchError};
+use super::{
+    errors::{FullUrlConstructionError, LppApiFetchError},
+    BusStationCode,
+    GeographicalLocation,
+};
 use crate::configuration::structure::LppApiConfiguration;
+
+/*
+ * RAW RESPONSE SCHEMAS
+ */
 
 #[derive(Serialize, Deserialize, Clone)]
 struct RawStationsOnRouteResponse {
-    pub success: bool,
-    pub data: Vec<StationOnRoute>,
+    success: bool,
+    data: Vec<RawStationOnRoute>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct StationOnRoute {
+struct RawStationOnRoute {
     /// Unique internal station identifier.
     ///
     /// Example: `3307`.
     ///
     /// LPP documentation: "Integer ID of station".
-    pub station_int_id: i32,
+    station_int_id: i32,
 
     /// Unique bus station reference (?) identifier used in other requests.
     ///
     /// Example: `201011`.
     ///
     /// LPP documentation: "Destination of route (direction)".
-    pub station_code: String,
+    station_code: String,
 
     /// Station name.
     ///
     /// Example: `ŽELEZNA`.
     ///
     /// LPP documentation: "Destination of route (direction)".
-    pub name: String,
+    name: String,
 
     /// Stop number (starts at 1 and is incremented for
     /// each next station on the bus route).
@@ -41,23 +49,74 @@ pub struct StationOnRoute {
     /// Example: `1`.
     ///
     /// LPP documentation: "Order of stations, 1 is starting station".
-    pub order_no: i32,
+    order_no: i32,
 
     /// Geographical latitude of the bus station.
     ///
     /// Example: `46.06103968748721`.
     ///
     /// LPP documentation: "Geographical latitude of station".
-    pub latitude: f64,
+    latitude: f64,
 
     /// Geographical longitude of the bus station.
     ///
     /// Longitude: `14.5132960445235`.
     ///
     /// LPP documentation: "Geographical longitude of station".
-    pub longitude: f64,
+    longitude: f64,
 }
 
+
+/*
+ * PARSED RESPONSE SCHEMAS
+ */
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct StationOnRoute {
+    /// Unique bus station identifier
+    /// (useful in other station-related requests).
+    ///
+    /// Example: `201011`.
+    pub station_code: BusStationCode,
+
+    /// Unique *internal* station identifier.
+    /// Unused in other parts of the API.
+    ///
+    /// Example: `3307`.
+    pub internal_station_id: i32,
+
+    /// Station name.
+    ///
+    /// Example: `ŽELEZNA`.
+    pub name: String,
+
+    /// Geographical location of the bus station.
+    pub location: GeographicalLocation,
+
+    /// Stop number. Starts at 1 and is incremented for
+    /// each next station on the bus route.
+    ///
+    /// Example: `1`.
+    pub stop_number: i32,
+}
+
+
+impl From<RawStationOnRoute> for StationOnRoute {
+    fn from(value: RawStationOnRoute) -> Self {
+        Self {
+            station_code: BusStationCode::new(value.station_code),
+            internal_station_id: value.station_int_id,
+            name: value.name,
+            location: GeographicalLocation::new(value.latitude, value.longitude),
+            stop_number: value.order_no,
+        }
+    }
+}
+
+
+/*
+ * FETCHING
+ */
 
 fn build_stations_on_route_url<S>(
     api_configuration: &LppApiConfiguration,
@@ -126,6 +185,12 @@ where
     if response_raw_json.data.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(response_raw_json.data))
+        let parsed_stations = response_raw_json
+            .data
+            .into_iter()
+            .map(StationOnRoute::from)
+            .collect();
+
+        Ok(Some(parsed_stations))
     }
 }

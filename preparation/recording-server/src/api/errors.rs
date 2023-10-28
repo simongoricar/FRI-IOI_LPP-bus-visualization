@@ -59,6 +59,23 @@ impl LppApiFetchError {
 }
 
 
+#[derive(Error, Debug, Diagnostic)]
+#[error("Could not parse timetable: {}", reason)]
+pub struct RouteTimetableParseError {
+    reason: String,
+}
+
+impl RouteTimetableParseError {
+    pub fn new<S>(reason: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            reason: reason.into(),
+        }
+    }
+}
+
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Invalid bus route name: {}", route_name)]

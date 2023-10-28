@@ -4,18 +4,22 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 use url::Url;
 
-use super::errors::{FullUrlConstructionError, LppApiFetchError};
+use super::{
+    errors::{FullUrlConstructionError, LppApiFetchError, RouteTimetableParseError},
+    BaseBusRoute,
+    BusRoute,
+};
 use crate::configuration::structure::LppApiConfiguration;
 
 
 /*
- * Raw timetable structs
+ * RAW RESPONSE SCHEMAS
  */
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct RawTimetableResponse {
-    pub success: bool,
-    pub data: RawTimetableData,
+    success: bool,
+    data: RawTimetableData,
 }
 
 
@@ -24,13 +28,13 @@ struct RawTimetableData {
     /// Concise information about the requested station.
     ///
     /// LPP documentation: "Contains station data".
-    pub station: RawTimetableStationData,
+    station: RawTimetableStationData,
 
     /// Timetables for requested route groups
     /// (because we can request more than one bus line at once for a station).
     ///
     /// LPP documentation: "Array of timetables for requested route groups".
-    pub route_groups: Vec<RawTimetableRouteGroupsData>,
+    route_groups: Vec<RawTimetableRouteGroupsData>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -40,15 +44,14 @@ struct RawTimetableStationData {
     /// Example: `600012`.
     ///
     /// LPP documentation: "Reference ID/ station code of station (6 digits, ex. 600011)".
-    #[serde(rename = "ref_id")]
-    pub station_code: String,
+    ref_id: String,
 
     /// Station name.
     ///
     /// Example: `Bavarski dvor`.
     ///
     /// LPP documentation: "Name of the station".
-    pub name: String,
+    name: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -59,68 +62,68 @@ struct RawTimetableRouteGroupsData {
     ///
     /// LPP documentation: "Route group number for the array item
     /// (always non-suffixed, ex. 6 instead of 6B)".
-    pub route_group_number: String,
+    route_group_number: String,
 
     /// List of trips in this route group. If `route_group_number` is e.g. "3",
     /// you'd probably expect this list to contain e.g. 3, 3G, N3, N3B, ...
     ///
     /// LPP documentation: "Array of timetables for the specific subroute (ex. 6B)".
-    pub routes: Vec<RawTimetableRoute>,
+    routes: Vec<RawTripTimetable>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct RawTimetableRoute {
+struct RawTripTimetable {
     /// All arrivals for the given station.
     ///
     /// LPP documentation: "Array of arrivals to this station".
-    pub timetable: Vec<RawTimetableRouteTimetableEntry>,
+    timetable: Vec<RawTimetableRouteTimetableEntry>,
 
     /// All stations on this sub-route.
     ///
     /// LPP documentation: "Array of all stations on this subroute".
-    pub stations: Vec<RawTimetableRouteStationEntry>,
+    stations: Vec<RawStationOnTimetable>,
 
     /// Bus direction (ending station).
     ///
     /// Example: `RUDNIK`.
     ///
     /// LPP documentation: "Name of the station".
-    pub name: String,
+    name: String,
 
     /// Full route name.
     ///
     /// Example: `LITOSTROJ - Bavarski dvor - RUDNIK`.
     ///
     /// LPP documentation: "Name of the full route/trip (start-destination)".
-    pub parent_name: String,
+    parent_name: String,
 
     /// Bus line name (without a prefix or suffix).
     ///
     /// Example: `3`.
     ///
     /// LPP documentation: "Repeated route group number, non suffixed".
-    pub group_name: String,
+    group_name: String,
 
     /// Can be an empty string, indicating no prefix.
     ///
     /// Example: `N`.
     ///
     /// LPP documentation: "Letter prefix for the route, if it exists, otherwise empty string".
-    pub route_number_prefix: String,
+    route_number_prefix: String,
 
     /// Can be an empty string, indicating no suffix.
     ///
     /// Example: `B`.
     ///
     /// LPP documentation: "Letter suffix for the route, if it exists, otherwise empty string".
-    pub route_number_suffix: String,
+    route_number_suffix: String,
 
     /// Whether this trip ends in a garage.
     ///
     /// Example: `true`.
     ///
     /// LPP documentation: "true if route ends in garage".
-    pub is_garage: bool,
+    is_garage: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -130,7 +133,7 @@ struct RawTimetableRouteTimetableEntry {
     /// Example: `5`.
     ///
     /// LPP documentation: none at all.
-    pub hour: i32,
+    hour: i32,
 
     /// A list of all arrivals in minutes.
     /// For example, if `hour = 13` and `minutes = [11, 52]`,
@@ -140,39 +143,38 @@ struct RawTimetableRouteTimetableEntry {
     /// Example: `[19]`.
     ///
     /// LPP documentation: none at all.
-    pub minutes: Vec<i32>,
+    minutes: Vec<i32>,
 
     /// Whether this is the current hour. Seems mostly useless.
     ///
     /// Example: `false`.
     ///
     /// LPP documentation: "True if this represents arrivals for current hour.".
-    pub is_current: bool,
+    is_current: bool,
 
     ///
     ///
     /// Example: ``.
     ///
     /// LPP documentation: none at all.
-    pub timestamp: String,
+    timestamp: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct RawTimetableRouteStationEntry {
+struct RawStationOnTimetable {
     /// Unique bus station reference (?) identifier used in other requests.
     ///
     /// Example: `201011`.
     ///
     /// LPP documentation: "".
-    #[serde(rename = "ref_id")]
-    pub station_code: String,
+    ref_id: String,
 
     /// Name of the bus station.
     ///
     /// Example: `ŽELEZNA`.
     ///
     /// LPP documentation: "Name of the station".
-    pub name: String,
+    name: String,
 
     /// Stop number (starts at 1 and is incremented for
     /// each next station on the bus route).
@@ -180,72 +182,105 @@ struct RawTimetableRouteStationEntry {
     /// Example: `1`.
     ///
     /// LPP documentation: "Sequential order number of the station on this route".
-    pub order_no: i32,
+    order_no: i32,
 }
 
+
+
 /*
- * Parsed timetable structs
+ * PARSED RESPONSE SCHEMAS
  */
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RouteGroupTimetable {
-    /// Route group number (without prefix or suffix).
-    /// `trip_timetables` includes sub-routes of
+    /// Base route group name (without a prefix or suffix).
     ///
     /// Example: `3`.
-    pub route_group_name: String,
+    pub route_group_name: BaseBusRoute,
 
-    pub route_timetables: Vec<RouteTimetable>,
+    /// The base route's specific timetables per "sub-route".
+    /// We call these "trip timetables" here because this is
+    /// essentially a one-way timetable.
+    ///
+    /// This means we'll (likely) get timetables for route "3G" and "3B"
+    /// whenever `route_group_name` is "3".
+    pub trip_timetables: Vec<TripTimetable>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RouteTimetable {
-    /// Full route name.
+pub struct TripTimetable {
+    /// Describes the full bus route number
+    /// (including any route prefix and/or suffix).
+    ///
+    /// Example: `3G`
+    pub route: BusRoute,
+
+    /// Contains the full trip name.
     ///
     /// Example: `LITOSTROJ - Bavarski dvor - RUDNIK`.
-    pub route_name: String,
+    pub trip_name: String,
 
-    /// Short route name - bus direction (ending station).
+    /// Contains a short name for this trip
+    /// (usually just the destination part of the `name` field).
     ///
     /// Example: `RUDNIK`.
-    pub short_route_name: String,
-
-    /// Bus line name (without a prefix or suffix).
-    ///
-    /// Example: `3`.
-    pub route_group_name: String,
-
-    /// Can be an empty string, indicating no prefix.
-    ///
-    /// Example: `N`.
-    pub route_number_prefix: String,
-
-    /// Can be an empty string, indicating no suffix.
-    ///
-    /// Example: `B`.
-    pub route_number_suffix: String,
+    pub short_trip_name: String,
 
     /// Whether this trip ends in a garage.
     ///
     /// Example: `true`.
-    pub is_garage: bool,
+    pub ends_in_garage: bool,
 
-    /// All arrivals of this sub-route for the given station.
-    pub timetable: Vec<RouteTimetableEntry>,
+    /// All departures from this station for the given trip.
+    pub timetable: Vec<TimetableEntry>,
 
-    /// All stations on this sub-route.
-    pub stations: Vec<RouteStationEntry>,
+    /// All bus stops on this trip.
+    pub stations: Vec<StationOnTimetable>,
 }
 
+/// An individual entry in the timetable,
+/// i.e. when the bus is scheduled to arrive.
+///
+/// ## Invariants
+/// - `1 <= hour <= 24`
+/// - `0 <= minute <= 59`
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RouteTimetableEntry {
-    pub hour: i32,
-    pub minute: i32,
+pub struct TimetableEntry {
+    /// Hour of scheduled arrival.
+    pub hour: u8,
+
+    /// Minute of scheduled arrival.
+    pub minute: u8,
 }
 
+impl TimetableEntry {
+    pub fn new(hour: u8, minute: u8) -> Result<Self, RouteTimetableParseError> {
+        if hour < 1 {
+            return Err(RouteTimetableParseError::new(
+                "hour value is smaller than 1!",
+            ));
+        }
+        if hour > 24 {
+            return Err(RouteTimetableParseError::new(
+                "hour value is larger than 24!",
+            ));
+        }
+
+        if minute > 59 {
+            return Err(RouteTimetableParseError::new(
+                "minute value is larger than 59!",
+            ));
+        }
+
+        Ok(Self { hour, minute })
+    }
+}
+
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RouteStationEntry {
-    /// Unique bus station reference (?) identifier used in other requests.
+pub struct StationOnTimetable {
+    /// Unique bus station identifier
+    /// (useful in other station-related requests).
     ///
     /// Example: `201011`.
     pub station_code: String,
@@ -255,11 +290,11 @@ pub struct RouteStationEntry {
     /// Example: `ŽELEZNA`.
     pub name: String,
 
-    /// Stop number (starts at 1 and is incremented for
-    /// each next station on the bus route).
+    /// Stop number. Starts at 1 and is incremented for
+    /// each next station on the bus route.
     ///
     /// Example: `1`.
-    pub order_no: i32,
+    pub stop_number: u32,
 }
 
 
@@ -267,60 +302,102 @@ pub struct RouteStationEntry {
  * Conversions
  */
 
-impl From<RawTimetableRouteGroupsData> for RouteGroupTimetable {
-    fn from(value: RawTimetableRouteGroupsData) -> Self {
+impl TryFrom<RawTimetableRouteGroupsData> for RouteGroupTimetable {
+    type Error = RouteTimetableParseError;
+
+    fn try_from(value: RawTimetableRouteGroupsData) -> Result<Self, Self::Error> {
         let route_timetables = value
             .routes
             .into_iter()
-            .map(|raw_route| RouteTimetable::from(raw_route))
-            .collect();
+            .map(TripTimetable::try_from)
+            .collect::<Result<_, _>>()?;
 
-        Self {
-            route_group_name: value.route_group_number,
-            route_timetables,
-        }
+        Ok(Self {
+            route_group_name: BaseBusRoute::new(value.route_group_number),
+            trip_timetables: route_timetables,
+        })
     }
 }
 
-impl From<RawTimetableRoute> for RouteTimetable {
-    fn from(value: RawTimetableRoute) -> Self {
+impl TryFrom<RawTripTimetable> for TripTimetable {
+    type Error = RouteTimetableParseError;
+
+    fn try_from(value: RawTripTimetable) -> Result<Self, Self::Error> {
         let mut timetable_entries = Vec::with_capacity(value.timetable.len());
         for raw_timetable_entry in value.timetable {
+            let hour = u8::try_from(raw_timetable_entry.hour).map_err(|_| {
+                RouteTimetableParseError::new(format!(
+                    "hour value can not fit into u8: {}",
+                    raw_timetable_entry.hour,
+                ))
+            })?;
+
             for raw_minute_entry in raw_timetable_entry.minutes {
-                timetable_entries.push(RouteTimetableEntry {
-                    hour: raw_timetable_entry.hour,
-                    minute: raw_minute_entry,
-                });
+                let minute = u8::try_from(raw_minute_entry).map_err(|_| {
+                    RouteTimetableParseError::new(format!(
+                        "minute value can not fit into u8: {}",
+                        raw_minute_entry,
+                    ))
+                })?;
+
+                let arrival = TimetableEntry::new(hour, minute)?;
+                timetable_entries.push(arrival);
             }
         }
 
+        let group_number = value.group_name.parse::<u32>()
+            .map_err(|_| RouteTimetableParseError::new(format!(
+                "group_name can not fit into u32 (maybe it has a prefix/suffix and is not a group): {}",
+                value.group_name,
+            )))?;
+
+        let route = BusRoute::from_components(
+            if value.route_number_prefix.is_empty() {
+                None
+            } else {
+                Some(value.route_number_prefix)
+            },
+            group_number,
+            if value.route_number_suffix.is_empty() {
+                None
+            } else {
+                Some(value.route_number_suffix)
+            },
+        );
 
         let stations = value
             .stations
             .into_iter()
-            .map(RouteStationEntry::from)
-            .collect::<Vec<_>>();
+            .map(StationOnTimetable::try_from)
+            .collect::<Result<_, _>>()?;
 
-        Self {
-            route_name: value.parent_name,
-            short_route_name: value.name,
-            route_group_name: value.group_name,
-            route_number_prefix: value.route_number_prefix,
-            route_number_suffix: value.route_number_suffix,
-            is_garage: value.is_garage,
+        Ok(Self {
+            trip_name: value.parent_name,
+            short_trip_name: value.name,
+            route,
+            ends_in_garage: value.is_garage,
             timetable: timetable_entries,
             stations,
-        }
+        })
     }
 }
 
-impl From<RawTimetableRouteStationEntry> for RouteStationEntry {
-    fn from(value: RawTimetableRouteStationEntry) -> Self {
-        Self {
-            station_code: value.station_code,
+impl TryFrom<RawStationOnTimetable> for StationOnTimetable {
+    type Error = RouteTimetableParseError;
+
+    fn try_from(value: RawStationOnTimetable) -> Result<Self, Self::Error> {
+        let stop_number = u32::try_from(value.order_no).map_err(|_| {
+            RouteTimetableParseError::new(format!(
+                "order_no value can not fit into u32: {}",
+                value.order_no,
+            ))
+        })?;
+
+        Ok(Self {
+            station_code: value.ref_id,
             name: value.name,
-            order_no: value.order_no,
-        }
+            stop_number,
+        })
     }
 }
 
@@ -451,8 +528,9 @@ where
         .data
         .route_groups
         .into_iter()
-        .map(RouteGroupTimetable::from)
-        .collect();
+        .map(RouteGroupTimetable::try_from)
+        .collect::<Result<_, _>>()
+        .map_err(|error| LppApiFetchError::malformed_response_with_reason(error.to_string()))?;
 
     Ok(route_group_timetables)
 }

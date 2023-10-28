@@ -6,7 +6,7 @@ use super::errors::RouteNameParseError;
 /// Represents a location on the Earth in the
 /// [geographical coordinate system](https://en.wikipedia.org/wiki/Geographic_coordinate_system).
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Location {
+pub struct GeographicalLocation {
     /// Geographical latitude.
     ///
     /// Example: `46.06103968748721`.
@@ -18,7 +18,7 @@ pub struct Location {
     pub longitude: f64,
 }
 
-impl Location {
+impl GeographicalLocation {
     #[inline]
     pub fn new(latitude: f64, longitude: f64) -> Self {
         Self {
@@ -67,14 +67,14 @@ impl From<String> for BusStationCode {
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BusRoute {
     pub prefix: Option<String>,
-    pub base_route_name: String,
+    pub base_route_number: u32,
     pub suffix: Option<String>,
 }
 
 impl BusRoute {
     fn components_from_route_name(
         full_route_name: String,
-    ) -> Result<(Option<String>, String, Option<String>), RouteNameParseError> {
+    ) -> Result<(Option<String>, u32, Option<String>), RouteNameParseError> {
         if full_route_name.is_empty() {
             return Err(RouteNameParseError::new(full_route_name));
         }
@@ -107,7 +107,7 @@ impl BusRoute {
         };
 
 
-        let remaining_route_name = {
+        let base_route_number = {
             let mut modified_route_name = if let Some(prefix) = prefix.as_ref() {
                 full_route_name
                     .strip_prefix(prefix)
@@ -125,22 +125,24 @@ impl BusRoute {
             };
 
 
-            modified_route_name.to_string()
+            modified_route_name
+                .parse::<u32>()
+                .map_err(|_| RouteNameParseError::new(&full_route_name))?
         };
 
-        Ok((prefix, remaining_route_name, suffix))
+        Ok((prefix, base_route_number, suffix))
     }
 
     pub fn from_route_name<S>(route_name: S) -> Result<Self, RouteNameParseError>
     where
         S: Into<String>,
     {
-        let (prefix, base_route_name, suffix) =
+        let (prefix, base_route_number, suffix) =
             Self::components_from_route_name(route_name.into())?;
 
         Ok(Self {
             prefix,
-            base_route_name,
+            base_route_number,
             suffix,
         })
     }
@@ -148,12 +150,12 @@ impl BusRoute {
     #[inline]
     pub fn from_components(
         prefix: Option<String>,
-        base_route_name: String,
+        base_route_number: u32,
         suffix: Option<String>,
     ) -> Self {
         Self {
             prefix,
-            base_route_name,
+            base_route_number,
             suffix,
         }
     }
@@ -164,6 +166,55 @@ impl TryFrom<String> for BusRoute {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Self::from_route_name(value)
+    }
+}
+
+impl ToString for BusRoute {
+    fn to_string(&self) -> String {
+        format!(
+            "{prefix}{base}{suffix}",
+            prefix = match self.prefix.as_ref() {
+                Some(prefix) => prefix,
+                None => "",
+            },
+            base = self.base_route_number,
+            suffix = match self.suffix.as_ref() {
+                Some(suffix) => suffix,
+                None => "",
+            }
+        )
+    }
+}
+
+
+
+/// Represents a bus route name
+/// *without a prefix or suffix*, i.e. the "base" route.
+///
+/// Example: `11`.
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct BaseBusRoute(String);
+
+impl BaseBusRoute {
+    #[inline]
+    pub fn new<S>(base_bus_route_name: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self(base_bus_route_name.into())
+    }
+}
+
+impl From<String> for BaseBusRoute {
+    fn from(value: String) -> Self {
+        Self::new(value)
+    }
+}
+
+impl ToString for BaseBusRoute {
+    fn to_string(&self) -> String {
+        self.0.clone()
     }
 }
 
@@ -183,6 +234,26 @@ impl RouteId {
 }
 
 impl From<String> for RouteId {
+    fn from(value: String) -> Self {
+        Self::new(value)
+    }
+}
+
+
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct VehicleId(String);
+
+impl VehicleId {
+    #[inline]
+    pub fn new<S>(vehicle_id: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self(vehicle_id.into())
+    }
+}
+
+impl From<String> for VehicleId {
     fn from(value: String) -> Self {
         Self::new(value)
     }
@@ -219,26 +290,22 @@ mod tests {
     fn parse_bus_route_correctly() {
         assert_eq!(
             BusRoute::from_route_name("19").unwrap(),
-            BusRoute::from_components(None, "19".to_string(), None),
+            BusRoute::from_components(None, 19, None),
         );
 
         assert_eq!(
             BusRoute::from_route_name("3G").unwrap(),
-            BusRoute::from_components(None, "3".to_string(), Some("G".to_string())),
+            BusRoute::from_components(None, 3, Some("G".to_string())),
         );
 
         assert_eq!(
             BusRoute::from_route_name("N1").unwrap(),
-            BusRoute::from_components(Some("N".to_string()), "1".to_string(), None),
+            BusRoute::from_components(Some("N".to_string()), 1, None),
         );
 
         assert_eq!(
             BusRoute::from_route_name("N3B").unwrap(),
-            BusRoute::from_components(
-                Some("N".to_string()),
-                "3".to_string(),
-                Some("B".to_string())
-            ),
+            BusRoute::from_components(Some("N".to_string()), 3, Some("B".to_string())),
         );
     }
 }

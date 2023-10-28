@@ -7,7 +7,7 @@ use super::{
     errors::{FullUrlConstructionError, LppApiFetchError},
     BusRoute,
     BusStationCode,
-    Location,
+    GeographicalLocation,
 };
 use crate::configuration::structure::LppApiConfiguration;
 
@@ -28,8 +28,7 @@ struct RawStationDetails {
     /// Example: `3307`.
     ///
     /// LPP documentation: "Integer ID of station".
-    #[serde(rename = "int_id")]
-    pub station_int_id: i32,
+    pub int_id: i32,
 
     /// Geographical latitude of the bus station.
     ///
@@ -57,8 +56,7 @@ struct RawStationDetails {
     /// Example: `201011`.
     ///
     /// LPP documentation: "Ref ID / station code of the station (ex. 600011)".
-    #[serde(rename = "ref_id")]
-    pub station_code: String,
+    pub ref_id: String,
 
     /// A list of all route groups that stop on this bus station.
     /// If `show-subroutes=1` is included in the request, this is separated into
@@ -71,8 +69,7 @@ struct RawStationDetails {
     /// LPP documentation: "Array of route groups on this station.
     /// This contains only route group numbers (1,2,6...). If show-subroutes=1 is set,
     /// this will also include routes like 19I, 19B... with suffixes".
-    #[serde(rename = "route_groups_on_station")]
-    pub routes_on_station: Vec<String>,
+    pub route_groups_on_station: Vec<String>,
 }
 
 
@@ -94,13 +91,13 @@ pub struct StationDetails {
     /// Example: `3307`.
     pub internal_station_id: i32,
 
-    /// Geographical location of the bus station.
-    pub location: Location,
-
     /// Name of the bus station.
     ///
     /// Example: `ŽELEZNA`.
     pub name: String,
+
+    /// Geographical location of the bus station.
+    pub location: GeographicalLocation,
 
     /// A list of all routes that stop on this bus station.
     /// This includes "sub-routes", such as "12D" or "N3B".
@@ -113,18 +110,18 @@ impl TryFrom<RawStationDetails> for StationDetails {
     type Error = miette::Report;
 
     fn try_from(value: RawStationDetails) -> Result<Self, Self::Error> {
-        let station_code = BusStationCode::new(value.station_code);
-        let location = Location::new(value.latitude, value.longitude);
+        let station_code = BusStationCode::new(value.ref_id);
+        let location = GeographicalLocation::new(value.latitude, value.longitude);
 
         let routes_on_station = value
-            .routes_on_station
+            .route_groups_on_station
             .into_iter()
             .map(BusRoute::try_from)
             .collect::<Result<_, _>>()?;
 
         Ok(Self {
             station_code,
-            internal_station_id: value.station_int_id,
+            internal_station_id: value.int_id,
             location,
             name: value.name,
             routes_on_station,
