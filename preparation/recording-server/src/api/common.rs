@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use std::fmt::Display;
+
+use serde::{de::Error, Deserialize, Serialize};
+use serde_with::SerializeAs;
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::errors::RouteNameParseError;
@@ -58,13 +61,31 @@ impl From<String> for BusStationCode {
     }
 }
 
+impl From<&str> for BusStationCode {
+    fn from(value: &str) -> Self {
+        Self(value.to_string())
+    }
+}
+
+impl AsRef<str> for BusStationCode {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for BusStationCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 
 
 /// Represents a full bus route name
 /// (including a potential prefix and/or suffix).
 ///
 /// Example: `11B`.
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct BusRoute {
     pub prefix: Option<String>,
     pub base_route_number: u32,
@@ -79,9 +100,8 @@ impl BusRoute {
             return Err(RouteNameParseError::new(full_route_name));
         }
 
-        let mut route_name_graphemes = full_route_name.graphemes(true);
-
-        let first_grapheme = route_name_graphemes
+        let first_grapheme = full_route_name
+            .graphemes(true)
             .next()
             .ok_or_else(|| RouteNameParseError::new(&full_route_name))?
             .to_string();
@@ -94,7 +114,8 @@ impl BusRoute {
             None
         };
 
-        let last_grapheme = route_name_graphemes
+        let last_grapheme = full_route_name
+            .graphemes(true)
             .last()
             .ok_or_else(|| RouteNameParseError::new(&full_route_name))?
             .to_string();
@@ -159,6 +180,10 @@ impl BusRoute {
             suffix,
         }
     }
+
+    pub fn to_base_route(&self) -> BaseBusRoute {
+        BaseBusRoute::new_from_number(self.base_route_number)
+    }
 }
 
 impl TryFrom<String> for BusRoute {
@@ -169,9 +194,10 @@ impl TryFrom<String> for BusRoute {
     }
 }
 
-impl ToString for BusRoute {
-    fn to_string(&self) -> String {
-        format!(
+impl Display for BusRoute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "{prefix}{base}{suffix}",
             prefix = match self.prefix.as_ref() {
                 Some(prefix) => prefix,
@@ -186,41 +212,91 @@ impl ToString for BusRoute {
     }
 }
 
+impl Serialize for BusRoute {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for BusRoute {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        Self::from_route_name(value).map_err(D::Error::custom)
+    }
+}
+
 
 
 /// Represents a bus route name
 /// *without a prefix or suffix*, i.e. the "base" route.
 ///
 /// Example: `11`.
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct BaseBusRoute(String);
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct BaseBusRoute(u32);
 
 impl BaseBusRoute {
     #[inline]
-    pub fn new<S>(base_bus_route_name: S) -> Self
+    pub fn new_from_str<S>(base_bus_route_name: S) -> Result<Self, RouteNameParseError>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        Self(base_bus_route_name.into())
+        let bus_number = base_bus_route_name
+            .as_ref()
+            .parse::<u32>()
+            .map_err(|_| RouteNameParseError::new(base_bus_route_name.as_ref()))?;
+
+        Ok(Self(bus_number))
+    }
+
+    #[inline]
+    pub fn new_from_number(bus_number: u32) -> Self {
+        Self(bus_number)
     }
 }
 
-impl From<String> for BaseBusRoute {
-    fn from(value: String) -> Self {
-        Self::new(value)
+impl TryFrom<String> for BaseBusRoute {
+    type Error = RouteNameParseError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new_from_str(value)
     }
 }
 
-impl ToString for BaseBusRoute {
-    fn to_string(&self) -> String {
-        self.0.clone()
+impl Display for BaseBusRoute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Serialize for BaseBusRoute {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_u32(self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for BaseBusRoute {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = u32::deserialize(deserializer)?;
+        Ok(Self::new_from_number(value))
     }
 }
 
 
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct RouteId(String);
 
 impl RouteId {
@@ -239,8 +315,15 @@ impl From<String> for RouteId {
     }
 }
 
+impl Display for RouteId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct VehicleId(String);
 
 impl VehicleId {
@@ -262,6 +345,7 @@ impl From<String> for VehicleId {
 
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct TripId(String);
 
 impl TripId {
@@ -280,6 +364,12 @@ impl From<String> for TripId {
     }
 }
 
+impl AsRef<str> for TripId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 
 
 #[cfg(test)]
@@ -288,6 +378,11 @@ mod tests {
 
     #[test]
     fn parse_bus_route_correctly() {
+        assert_eq!(
+            BusRoute::from_route_name("6").unwrap(),
+            BusRoute::from_components(None, 6, None),
+        );
+
         assert_eq!(
             BusRoute::from_route_name("19").unwrap(),
             BusRoute::from_components(None, 19, None),

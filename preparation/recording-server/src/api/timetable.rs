@@ -8,6 +8,7 @@ use super::{
     errors::{FullUrlConstructionError, LppApiFetchError, RouteTimetableParseError},
     BaseBusRoute,
     BusRoute,
+    BusStationCode,
 };
 use crate::configuration::LppApiConfiguration;
 
@@ -303,7 +304,7 @@ pub struct StationOnTimetable {
  */
 
 impl TryFrom<RawTimetableRouteGroupsData> for RouteGroupTimetable {
-    type Error = RouteTimetableParseError;
+    type Error = miette::Report;
 
     fn try_from(value: RawTimetableRouteGroupsData) -> Result<Self, Self::Error> {
         let route_timetables = value
@@ -313,7 +314,7 @@ impl TryFrom<RawTimetableRouteGroupsData> for RouteGroupTimetable {
             .collect::<Result<_, _>>()?;
 
         Ok(Self {
-            route_group_name: BaseBusRoute::new(value.route_group_number),
+            route_group_name: BaseBusRoute::new_from_str(value.route_group_number)?,
             trip_timetables: route_timetables,
         })
     }
@@ -420,16 +421,14 @@ pub enum TimetableFetchMode {
     },
 }
 
-fn build_timetable_url<S, N, I>(
+fn build_timetable_url<I>(
     api_configuration: &LppApiConfiguration,
-    station_code: S,
+    station_code: &BusStationCode,
     route_group_numbers: I,
     timetable_mode: &TimetableFetchMode,
 ) -> Result<Url, FullUrlConstructionError>
 where
-    S: AsRef<str>,
-    N: AsRef<str>,
-    I: IntoIterator<Item = N>,
+    I: IntoIterator<Item = BaseBusRoute>,
 {
     pub const TIMETABLE_SUB_URL: &str = "station/timetable";
 
@@ -460,8 +459,11 @@ where
     url_query_pairs.append_pair("previous-hours", &previous_hours.to_string());
 
 
-    for station_code in route_group_numbers.into_iter() {
-        url_query_pairs.append_pair("route-group-number", station_code.as_ref());
+    for route_group_number in route_group_numbers.into_iter() {
+        url_query_pairs.append_pair(
+            "route-group-number",
+            &route_group_number.to_string(),
+        );
     }
 
     drop(url_query_pairs);
@@ -470,17 +472,15 @@ where
 }
 
 
-pub async fn fetch_timetable<S, N, I>(
+pub async fn fetch_timetable<I>(
     api_configuration: &LppApiConfiguration,
     client: &Client,
-    station_code: S,
+    station_code: &BusStationCode,
     route_group_numbers: I,
     timetable_mode: TimetableFetchMode,
 ) -> Result<Vec<RouteGroupTimetable>, LppApiFetchError>
 where
-    S: AsRef<str>,
-    N: AsRef<str>,
-    I: IntoIterator<Item = N>,
+    I: IntoIterator<Item = BaseBusRoute>,
 {
     let full_url = build_timetable_url(
         api_configuration,
@@ -551,8 +551,8 @@ mod tests {
         assert_eq!(
             build_timetable_url(
                 &api_configuration,
-                "600012",
-                ["3"],
+                &BusStationCode::new("600012"),
+                [BaseBusRoute::new_from_str("3").unwrap()],
                 &TimetableFetchMode::Manual { next_hours: 12, previous_hours: 12 },
             ).unwrap(),
             Url::parse("https://data.lpp.si/api/station/timetable?station-code=600012&next-hours=12&previous-hours=12&route-group-number=3").unwrap()
@@ -561,8 +561,8 @@ mod tests {
         assert_eq!(
             build_timetable_url(
                 &api_configuration,
-                "600012",
-                ["3", "18"],
+                &BusStationCode::new("600012"),
+                [BaseBusRoute::new_from_number(3), BaseBusRoute::new_from_number(18)],
                 &TimetableFetchMode::Manual { next_hours: 12, previous_hours: 12 },
             ).unwrap(),
             Url::parse("https://data.lpp.si/api/station/timetable?station-code=600012&next-hours=12&previous-hours=12&route-group-number=3&route-group-number=18").unwrap()

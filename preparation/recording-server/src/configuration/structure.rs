@@ -16,13 +16,13 @@ use crate::storage::StorageRoot;
 #[derive(Clone)]
 pub struct Configuration {
     pub logging: LoggingConfiguration,
-    pub lpp: LppApiConfiguration,
+    pub lpp: LppConfiguration,
 }
 
 #[derive(Deserialize, Clone)]
 pub struct UnresolvedConfiguration {
     logging: UnresolvedLoggingConfiguration,
-    lpp: UnresolvedLppApiConfiguration,
+    lpp: UnresolvedLppConfiguration,
 }
 
 impl Configuration {
@@ -115,11 +115,13 @@ impl ResolvableConfiguration for UnresolvedLoggingConfiguration {
 
 
 
+#[derive(Deserialize, Clone)]
 struct UnresolvedLppConfiguration {
     api: UnresolvedLppApiConfiguration,
     recording: UnresolvedLppRecordingConfiguration,
 }
 
+#[derive(Clone)]
 pub struct LppConfiguration {
     pub api: LppApiConfiguration,
     pub recording: LppRecordingConfiguration,
@@ -167,12 +169,14 @@ impl ResolvableConfiguration for UnresolvedLppApiConfiguration {
 
 
 
+#[derive(Deserialize, Clone)]
 struct UnresolvedLppRecordingConfiguration {
     station_details_fetching_interval: String,
     route_details_fetching_interval: String,
     recording_storage_directory_path: String,
 }
 
+#[derive(Clone)]
 pub struct LppRecordingConfiguration {
     pub station_details_fetching_interval: Duration,
     pub route_details_fetching_interval: Duration,

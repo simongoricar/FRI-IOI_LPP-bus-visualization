@@ -2,7 +2,7 @@ use miette::Diagnostic;
 use reqwest::StatusCode;
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq, Eq, Clone)]
+#[derive(Error, Debug, Diagnostic, PartialEq, Eq, Clone)]
 pub enum FullUrlConstructionError {
     #[error("failed to join sub-URL onto base: {reason}.")]
     FailedToJoinUrl {
@@ -12,7 +12,7 @@ pub enum FullUrlConstructionError {
 }
 
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Diagnostic)]
 pub enum LppApiFetchError {
     #[error("URL construction error: {0}")]
     UrlError(#[from] FullUrlConstructionError),

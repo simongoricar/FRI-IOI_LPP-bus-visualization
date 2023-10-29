@@ -1,0 +1,4 @@
+
+## Sensitive files
+data/*.toml
+!data/*.EXAMPLE.toml

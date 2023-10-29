@@ -18,7 +18,7 @@ pub enum StorageError {
     OtherIoError(#[from] io::Error),
 }
 
-const DATE_TIME_FORMAT: &str = "%Y-%m-%d_%H-%M-%S%.3f%:z";
+const DATE_TIME_FORMAT: &str = "%Y-%m-%d_%H-%M-%S%.3f+UTC";
 
 fn ensure_directory_exists(path: &Path) -> Result<(), StorageError> {
     if path.exists() && !path.is_dir() {
@@ -26,7 +26,7 @@ fn ensure_directory_exists(path: &Path) -> Result<(), StorageError> {
             path: path.to_path_buf(),
         });
     } else {
-        fs::create_dir_all(&path)?;
+        fs::create_dir_all(path)?;
     };
 
     Ok(())
@@ -57,8 +57,8 @@ impl StorageRoot {
         StationStorage::new(self.base_storage_path.join("stations"))
     }
 
-    pub fn routes(&self) -> Result<RouteStorageRoot, StorageError> {
-        RouteStorageRoot::new(self.base_storage_path.join("routes"))
+    pub fn routes(&self) -> Result<RouteStorage, StorageError> {
+        RouteStorage::new(self.base_storage_path.join("routes"))
     }
 
     pub fn arrivals(&self) -> Result<ArrivalStorageRoot, StorageError> {
@@ -99,11 +99,11 @@ impl StationStorage {
 
 
 #[derive(Debug, Clone)]
-pub struct RouteStorageRoot {
+pub struct RouteStorage {
     route_storage_root_path: PathBuf,
 }
 
-impl RouteStorageRoot {
+impl RouteStorage {
     pub fn new<P>(route_storage_root_path: P) -> Result<Self, StorageError>
     where
         P: Into<PathBuf>,
@@ -119,45 +119,12 @@ impl RouteStorageRoot {
     pub fn directory_path(&self) -> &Path {
         &self.route_storage_root_path
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct RouteStorage {
-    full_route_name: String,
-    route_storage_path: PathBuf,
-}
-
-impl RouteStorage {
-    pub fn new<P, N>(route_storage_root_path: P, route_name: N) -> Result<Self, StorageError>
-    where
-        P: Into<PathBuf>,
-        N: Into<String>,
-    {
-        let route_storage_path: PathBuf = route_storage_root_path.into();
-        let route_name: String = route_name.into();
-
-        let route_storage_path = route_storage_path.join(&route_name);
-        ensure_directory_exists(&route_storage_path)?;
-
-        Ok(Self {
-            full_route_name: route_name.into(),
-            route_storage_path,
-        })
-    }
-
-    pub fn route_name(&self) -> &str {
-        &self.full_route_name
-    }
-
-    pub fn directory_path(&self) -> &Path {
-        &self.route_storage_path
-    }
 
     pub fn generate_json_file_path(&self, at_time: DateTime<Utc>) -> PathBuf {
         let formatted_time = at_time.format(DATE_TIME_FORMAT);
-        let file_name = format!("route_{}.json", formatted_time);
+        let file_name = format!("route-details_{}.json", formatted_time);
 
-        self.route_storage_path.join(file_name)
+        self.route_storage_root_path.join(file_name)
     }
 }
 
@@ -205,7 +172,7 @@ impl ArrivalStorage {
         ensure_directory_exists(&arrival_storage_path)?;
 
         Ok(Self {
-            full_route_name: route_name.into(),
+            full_route_name: route_name,
             arrival_storage_path,
         })
     }

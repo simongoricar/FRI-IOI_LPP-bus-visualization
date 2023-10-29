@@ -1,7 +1,7 @@
 use miette::miette;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use tracing::warn;
+use tracing::{debug, warn};
 use url::Url;
 
 use super::{
@@ -142,7 +142,7 @@ struct RawGeoJSONShape {
  * PARSED RESPONSE SCHEMAS
  */
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RouteDetails {
     /// Unique route identifier. This identifies all directions of
     /// a route, e.g. bus 3G going to Bežigrad and 3G going to Grosuplje have the same `route_id`.
@@ -223,7 +223,7 @@ impl TryFrom<RawRouteDetailsWithShape> for RouteDetails {
 /// GeoJSON LineString data representing the path the bus takes.
 ///
 /// Specification: <https://datatracker.ietf.org/doc/html/rfc7946#appendix-A.2>.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RouteGeoJsonShape {
     /// Set of points along which the bus travels.
     ///
@@ -300,6 +300,11 @@ pub async fn fetch_all_routes(
     client: &Client,
 ) -> Result<Vec<RouteDetails>, LppApiFetchError> {
     let full_url = build_routes_url(api_configuration, RouteRequestType::AllRoutes)?;
+
+    debug!(
+        full_url = %full_url,
+        "Will fetch all routes from the LPP API."
+    );
 
     let response = client
         .get(full_url)

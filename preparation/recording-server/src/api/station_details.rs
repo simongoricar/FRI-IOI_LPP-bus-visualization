@@ -1,6 +1,6 @@
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use tracing::warn;
+use tracing::{debug, warn};
 use url::Url;
 
 use super::{
@@ -138,7 +138,7 @@ impl TryFrom<RawStationDetails> for StationDetails {
 fn build_station_details_url(
     api_configuration: &LppApiConfiguration,
 ) -> Result<Url, FullUrlConstructionError> {
-    pub const STATION_DETAILS_SUB_URL: &str = "station-details";
+    pub const STATION_DETAILS_SUB_URL: &str = "station/station-details";
 
     let mut url = api_configuration
         .lpp_base_api_url
@@ -159,6 +159,11 @@ pub async fn fetch_station_details(
     client: &Client,
 ) -> Result<Vec<StationDetails>, LppApiFetchError> {
     let full_url = build_station_details_url(api_configuration)?;
+
+    debug!(
+        full_url = %full_url,
+        "Will fetch station details from the LPP API."
+    );
 
     let response = client
         .get(full_url)

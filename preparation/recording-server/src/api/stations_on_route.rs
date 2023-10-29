@@ -7,6 +7,7 @@ use super::{
     errors::{FullUrlConstructionError, LppApiFetchError},
     BusStationCode,
     GeographicalLocation,
+    TripId,
 };
 use crate::configuration::LppApiConfiguration;
 
@@ -71,7 +72,7 @@ struct RawStationOnRoute {
  * PARSED RESPONSE SCHEMAS
  */
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StationOnRoute {
     /// Unique bus station identifier
     /// (useful in other station-related requests).
@@ -118,13 +119,10 @@ impl From<RawStationOnRoute> for StationOnRoute {
  * FETCHING
  */
 
-fn build_stations_on_route_url<S>(
+fn build_stations_on_route_url(
     api_configuration: &LppApiConfiguration,
-    trip_id: S,
-) -> Result<Url, FullUrlConstructionError>
-where
-    S: AsRef<str>,
-{
+    trip_id: TripId,
+) -> Result<Url, FullUrlConstructionError> {
     pub const STATIONS_ON_ROUTE_SUB_URL: &str = "route/stations-on-route";
 
     let mut url = api_configuration
@@ -137,14 +135,11 @@ where
     Ok(url)
 }
 
-pub async fn fetch_stations_on_route<S>(
+pub async fn fetch_stations_on_route(
     api_configuration: &LppApiConfiguration,
     client: &Client,
-    trip_id: S,
-) -> Result<Option<Vec<StationOnRoute>>, LppApiFetchError>
-where
-    S: AsRef<str>,
-{
+    trip_id: TripId,
+) -> Result<Option<Vec<StationOnRoute>>, LppApiFetchError> {
     let full_url = build_stations_on_route_url(api_configuration, trip_id)?;
 
     let response = client

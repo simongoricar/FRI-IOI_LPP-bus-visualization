@@ -1,8 +1,5 @@
 /target
 
-## Sensitive files
-data/*.toml
-!data/*.EXAMPLE.toml
 
 ## IDE files
 .idea
