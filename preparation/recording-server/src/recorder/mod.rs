@@ -289,11 +289,21 @@ async fn route_state_fetching_loop(
         .into_diagnostic()
         .wrap_err_with(|| miette!("Failed to fetch all routes."))?;
 
+        info!(
+            number_of_routes = all_routes.len(),
+            "Fetched all routes, will get stations and timetables for each."
+        );
 
         let mut route_snapshots: Vec<RouteWithStationsAndTimetables> =
             Vec::with_capacity(all_routes.len());
 
         for route in all_routes {
+            info!(
+                route_id = %route.route_id,
+                route = %route.route,
+                "Fetching stations and timetables for route."
+            );
+
             let captured_at = Utc::now();
 
             let stations_on_route = retryable_async_with_exponential_backoff(

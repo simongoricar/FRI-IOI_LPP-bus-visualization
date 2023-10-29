@@ -364,6 +364,7 @@ impl TryFrom<RawTripTimetable> for TripTimetable {
             } else {
                 Some(value.route_number_suffix)
             },
+            None,
         );
 
         let stations = value

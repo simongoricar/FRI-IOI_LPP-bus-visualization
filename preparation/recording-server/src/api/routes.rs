@@ -68,7 +68,7 @@ pub struct RawRouteDetails {
     /// LPP documentation: "Destination of route (direction)"
     ///
     /// Example: `BEŽIGRAD`
-    short_route_name: String,
+    short_route_name: Option<String>,
 }
 
 
@@ -125,7 +125,7 @@ struct RawRouteDetailsWithShape {
     /// LPP documentation: "Destination of route (direction)"
     ///
     /// Example: `BEŽIGRAD`
-    short_route_name: String,
+    short_route_name: Option<String>,
 
     geojson_shape: RawGeoJSONShape,
 }
@@ -176,7 +176,7 @@ pub struct RouteDetails {
     /// (usually just the destination part of the `name` field).
     ///
     /// Example: `BEŽIGRAD`
-    pub short_name: String,
+    pub short_name: Option<String>,
 
     /// A GEOJson value contaning the route the bus takes.
     pub route_shape: Option<RouteGeoJsonShape>,
