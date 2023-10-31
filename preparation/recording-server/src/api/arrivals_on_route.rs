@@ -7,9 +7,9 @@ use url::Url;
 use super::{
     errors::{FullUrlConstructionError, LppApiFetchError},
     BusRoute,
-    BusStationCode,
     GeographicalLocation,
     RouteId,
+    StationCode,
     VehicleId,
 };
 use crate::configuration::LppApiConfiguration;
@@ -138,7 +138,7 @@ pub struct StationArrivalDetails {
     /// (useful in other station-related requests).
     ///
     /// Example: `201011`.
-    pub station_code: BusStationCode,
+    pub station_code: StationCode,
 
     /// Unique *internal* station identifier.
     /// Unused in other parts of the API.
@@ -181,7 +181,7 @@ impl TryFrom<RawStationArrivalDetails> for StationArrivalDetails {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(Self {
-            station_code: BusStationCode::new(value.station_code),
+            station_code: StationCode::new(value.station_code),
             internal_station_id: value.station_int_id,
             name: value.name,
             stop_number,

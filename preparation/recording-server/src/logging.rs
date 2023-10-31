@@ -7,6 +7,7 @@ use tracing_subscriber::{
     filter::LevelFilter,
     prelude::__tracing_subscriber_SubscriberExt,
     util::SubscriberInitExt,
+    EnvFilter,
     Layer,
 };
 
@@ -37,8 +38,11 @@ where
             .event_format(console_tracing_format);
 
         let console_level_filter_layer = LevelFilter::from(console_level);
+        let env_filter = EnvFilter::from_default_env();
 
-        console_layer.with_filter(console_level_filter_layer)
+        console_layer
+            .with_filter(console_level_filter_layer)
+            .with_filter(env_filter)
     };
 
     let (file_layer, file_guard) = {

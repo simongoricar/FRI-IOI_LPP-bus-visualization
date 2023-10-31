@@ -1,7 +1,7 @@
 use cancellation_token::CancellationToken;
 use logging::initialize_tracing;
 use miette::{miette, Context, IntoDiagnostic, Result};
-use recorder::{initialize_route_state_recording, initialize_station_details_recording};
+use recorder::initialize_station_and_route_details_snapshot_task;
 use reqwest::Client;
 use tracing::info;
 
@@ -23,29 +23,18 @@ pub async fn run_tasks(configuration: &Configuration) -> Result<()> {
 
     let job_cancellation_token = CancellationToken::new();
 
-    let station_details_recorder_task = initialize_station_details_recording(
+    let station_and_route_snapshot_task = initialize_station_and_route_details_snapshot_task(
         &configuration.lpp,
         http_client.clone(),
         job_cancellation_token.clone(),
     );
 
-    let route_state_recorder_task = initialize_route_state_recording(
-        &configuration.lpp,
-        http_client.clone(),
-        job_cancellation_token.clone(),
-    );
+    info!("Task spawned.");
 
-    info!("All tasks spawned.");
-
-    station_details_recorder_task
+    station_and_route_snapshot_task
         .await
         .into_diagnostic()
         .wrap_err_with(|| miette!("Station details recorder task panicked!"))??;
-
-    route_state_recorder_task
-        .await
-        .into_diagnostic()
-        .wrap_err_with(|| miette!("Route state recorder task panicked!"))??;
 
     Ok(())
 }

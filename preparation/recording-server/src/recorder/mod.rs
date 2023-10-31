@@ -1,4 +1,5 @@
 use std::{
+    collections::{HashMap, HashSet},
     error::Error,
     fs::OpenOptions,
     future::Future,
@@ -21,18 +22,23 @@ pub mod formats;
 use crate::{
     api::{
         routes::fetch_all_routes,
-        station_details::fetch_station_details,
+        routes_on_station::{fetch_routes_on_station, TripOnStation},
+        station_details::{fetch_station_details, StationDetails},
         stations_on_route::fetch_stations_on_route,
-        timetable::{fetch_timetable, TimetableFetchMode},
+        timetable::{fetch_timetable, TimetableFetchMode, TripTimetable},
+        BusRoute,
+        StationCode,
     },
     cancellation_token::CancellationToken,
     configuration::LppConfiguration,
     recorder::formats::{
         AllRoutesSnapshot,
         AllStationsSnapshot,
-        RouteWithStationsAndTimetables,
-        StationWithTimetable,
+        StationDetailsWithBusDetailsAndTimetables,
+        TripStationWithTimetable,
+        TripWithStationsAndTimetables,
     },
+    storage::{RouteStorage, StationStorage},
 };
 
 
@@ -69,10 +75,312 @@ where
 
 
 /*
- * Station details capture
+ * Station and route details capture
  */
 
-async fn station_details_fetching_loop(
+async fn make_station_and_route_snapshot(
+    configuration: &LppConfiguration,
+    client: &Client,
+    station_storage: &StationStorage,
+    route_storage: &RouteStorage,
+) -> Result<()> {
+    // Fetch all stations.
+    let stations = retryable_async_with_exponential_backoff(
+        || fetch_station_details(&configuration.api, client),
+        |result| match result {
+            Ok(details) => RetryableResult::Ok(details),
+            Err(error) => RetryableResult::TransientErr {
+                error,
+                override_retry_after: None,
+            },
+        },
+        None,
+    )
+    .instrument(info_span!("station-details"))
+    .await
+    .into_diagnostic()
+    .wrap_err_with(|| miette!("Failed to fetch station details."))?;
+
+
+    // For each station, get all buses (trips) that stop there.
+    let mut bus_trip_to_timetable: HashMap<BusRoute, HashMap<StationCode, TripTimetable>> =
+        HashMap::new();
+
+    let mut stations_with_bus_trips = Vec::with_capacity(stations.len());
+
+    let total_number_of_stations = stations.len();
+
+    for (station_index, station) in stations.into_iter().enumerate() {
+        debug!(
+            current_station = station_index + 1,
+            total_stations = total_number_of_stations,
+            station_name = station.name,
+            station_code = %station.station_code,
+            "Requesting routes on station."
+        );
+
+        let trips_on_station = retryable_async_with_exponential_backoff(
+            || fetch_routes_on_station(&configuration.api, client, &station.station_code),
+            |result| match result {
+                Ok(details) => RetryableResult::Ok(details),
+                Err(error) => RetryableResult::TransientErr {
+                    error,
+                    override_retry_after: None,
+                },
+            },
+            None,
+        )
+        .instrument(info_span!("trips-on-station"))
+        .await
+        .into_diagnostic()
+        .wrap_err_with(|| miette!("Failed to fetch trips on station."))?;
+
+
+
+        let mut all_route_groups = HashSet::new();
+        for trip in &trips_on_station {
+            all_route_groups.insert(trip.route.to_base_route());
+        }
+
+
+        if all_route_groups.is_empty() {
+            debug!(
+                current_station = station_index + 1,
+                total_stations = total_number_of_stations,
+                station_name = station.name,
+                station_code = %station.station_code,
+                "Station has no route groups, will not request a timetable."
+            );
+            continue;
+        }
+
+
+        debug!(
+            current_station = station_index + 1,
+            total_stations = total_number_of_stations,
+            station_name = station.name,
+            station_code = %station.station_code,
+            "Requesting full timetable for station."
+        );
+
+        let timetables = retryable_async_with_exponential_backoff(
+            || {
+                fetch_timetable(
+                    &configuration.api,
+                    client,
+                    &station.station_code,
+                    all_route_groups.clone(),
+                    TimetableFetchMode::FullDay,
+                )
+            },
+            |result| match result {
+                Ok(details) => RetryableResult::Ok(details),
+                Err(error) => RetryableResult::TransientErr {
+                    error,
+                    override_retry_after: None,
+                },
+            },
+            None,
+        )
+        .instrument(info_span!("timetable-on-station"))
+        .await
+        .into_diagnostic()
+        .wrap_err_with(|| miette!("Failed to fetch timetables on station."))?;
+
+
+        // Add the timetables into a hash map for later access (when we'll assign timetables to bus trips).
+        for group_timetable in &timetables {
+            for trip_timetable in &group_timetable.trip_timetables {
+                if let Some(trips_map) = bus_trip_to_timetable.get_mut(&trip_timetable.route) {
+                    trips_map.insert(
+                        station.station_code.clone(),
+                        trip_timetable.clone(),
+                    );
+                } else {
+                    let mut map = HashMap::new();
+                    map.insert(
+                        station.station_code.clone(),
+                        trip_timetable.clone(),
+                    );
+
+                    bus_trip_to_timetable.insert(trip_timetable.route.clone(), map);
+                }
+            }
+        }
+
+
+        let station_with_trips = StationDetailsWithBusDetailsAndTimetables::from_station_and_trips(
+            station,
+            trips_on_station,
+            timetables,
+        );
+
+        stations_with_bus_trips.push(station_with_trips);
+    }
+
+
+    // Now we'll fetch all bus routes and assign them a trip timetable.
+    debug!("Requesting all routes.");
+
+    let all_routes = retryable_async_with_exponential_backoff(
+        || fetch_all_routes(&configuration.api, client),
+        |result| match result {
+            Ok(details) => RetryableResult::Ok(details),
+            Err(error) => RetryableResult::TransientErr {
+                error,
+                override_retry_after: None,
+            },
+        },
+        None,
+    )
+    .instrument(info_span!("all-routes"))
+    .await
+    .into_diagnostic()
+    .wrap_err_with(|| miette!("Failed to fetch all routes."))?;
+
+
+    let mut routes_with_context = Vec::with_capacity(all_routes.len());
+
+    let number_of_all_routes = all_routes.len();
+
+    for (route_index, route) in all_routes.into_iter().enumerate() {
+        let captured_at = Utc::now();
+
+
+        let raw_route_timetables = match bus_trip_to_timetable.get(&route.route) {
+            Some(timetable_map) => timetable_map,
+            None => {
+                // It's possible that we have some bad data that has
+                // no associated timetable data. In this case, we ignore the route.
+                warn!(
+                    current_route = route_index + 1,
+                    total_routes = number_of_all_routes,
+                    route = %route.route,
+                    "Did not collect any timetables for this route - will skip."
+                );
+                continue;
+            }
+        };
+
+
+        debug!(
+            current_route = route_index + 1,
+            total_routes = number_of_all_routes,
+            "Requesting stations on route."
+        );
+
+        let stations_on_route = retryable_async_with_exponential_backoff(
+            || fetch_stations_on_route(&configuration.api, client, route.trip_id.clone()),
+            |result| match result {
+                Ok(details) => RetryableResult::Ok(details),
+                Err(error) => RetryableResult::TransientErr {
+                    error,
+                    override_retry_after: None,
+                },
+            },
+            None,
+        )
+        .instrument(info_span!("fetch-one-route"))
+        .await
+        .into_diagnostic()
+        .wrap_err_with(|| miette!("Failed to fetch individual route."))?;
+
+        let Some(stations_on_route) = stations_on_route else {
+            warn!(
+                route_id = %route.route_id,
+                route = %route.route,
+                "Route did not contain any stations."
+            );
+            continue;
+        };
+
+
+        // Join with the per-station per-trip timetable data
+        // we collected into `bus_trip_to_timetable` earlier.
+        let mut stations_with_timetables = Vec::with_capacity(stations_on_route.len());
+
+        for station_on_route in stations_on_route {
+            let associated_station_timetable =
+                match raw_route_timetables.get(&station_on_route.station_code) {
+                    Some(timetable) => timetable,
+                    None => {
+                        // It's possible that just one station on the route's way
+                        // did not return a timetable. In that case, we consider it bad
+                        // data and ignore the entire route.
+                        error!(
+                            route = %route.route,
+                            station_code = %station_on_route.station_code,
+                            "Did not find a timetable for station on the bus route. \
+                            Will ignore the entire route (not fatal)."
+                        );
+                        continue;
+                    }
+                };
+
+            stations_with_timetables.push(TripStationWithTimetable {
+                station: station_on_route,
+                timetable: associated_station_timetable.clone(),
+            });
+        }
+
+
+        routes_with_context.push(TripWithStationsAndTimetables {
+            captured_at,
+            route_details: route,
+            stations_on_route_with_timetables: stations_with_timetables,
+        });
+    }
+
+    // We've processed all the stations and all the routes, including their timetables.
+    info!("Finished requesting a snapshot of all stations and routes.");
+
+
+    let snapshot_time = Utc::now();
+
+    let station_details_snapshot = AllStationsSnapshot::new(snapshot_time, stations_with_bus_trips);
+    let route_details_snapshot = AllRoutesSnapshot::new(snapshot_time, routes_with_context);
+
+
+    // We have the data we need, so it's not time-critical
+    // that we save it at this exact moment; let's yield.
+    yield_now().await;
+
+    debug!("Saving station and route details to disk.");
+
+
+    // Save station details.
+    let station_details_file_path = station_storage.generate_json_file_path(snapshot_time);
+
+    save_json_to_file(
+        &station_details_snapshot,
+        &station_details_file_path,
+    )
+    .wrap_err_with(|| miette!("Failed to save station details snapshot."))?;
+
+    info!(
+        file_path = %station_details_file_path.display(),
+        "A snapshot of current station details have been saved to disk."
+    );
+
+
+    // Save route details.
+    let route_details_file_path = route_storage.generate_json_file_path(snapshot_time);
+
+    save_json_to_file(&route_details_snapshot, &route_details_file_path)
+        .wrap_err_with(|| miette!("Failed to save a snapshot of route details."))?;
+
+    info!(
+        file_path = %route_details_file_path.display(),
+        "A snapshot of current route details have been saved to disk."
+    );
+
+
+    info!("A full snapshot of both route and station details has been successfully saved.");
+
+    Ok(())
+}
+
+async fn station_and_route_details_snapshot_loop(
     configuration: LppConfiguration,
     client: Client,
     cancellation_token: CancellationToken,
@@ -83,48 +391,32 @@ async fn station_details_fetching_loop(
         .stations()
         .wrap_err_with(|| miette!("Failed to initialize storage location for station details."))?;
 
+    let route_storage = configuration
+        .recording
+        .recording_storage_root
+        .routes()
+        .wrap_err_with(|| miette!("Failed to initialize storage location for route details."))?;
 
+
+    #[allow(clippy::never_loop)]
     while !cancellation_token.is_cancelled() {
         let time_begin = Instant::now();
-        debug!("Requesting station details from LPP API.");
 
+        info!("Performing station and route snapshot.");
 
-        let station_details = retryable_async_with_exponential_backoff(
-            || fetch_station_details(&configuration.api, &client),
-            |result| match result {
-                Ok(details) => RetryableResult::Ok(details),
-                Err(error) => RetryableResult::TransientErr {
-                    error,
-                    override_retry_after: None,
-                },
-            },
-            None,
+        make_station_and_route_snapshot(
+            &configuration,
+            &client,
+            &stations_storage,
+            &route_storage,
         )
-        .instrument(info_span!("fetch-station-details"))
-        .await
-        .into_diagnostic()
-        .wrap_err_with(|| miette!("Failed to fetch station details."))?;
+        .await?;
 
-        debug!("Saving station details to disk.");
+        info!("Station and route snapshot complete.");
 
-        let snapshot_time = Utc::now();
-        let station_details_snapshot = AllStationsSnapshot::new(snapshot_time, station_details);
-
-
-        // We have the data we need, so it's not time-critical
-        // that we save it at this exact moment; let's yield.
-        yield_now().await;
-
-
-        let file_path = stations_storage.generate_json_file_path(snapshot_time);
-
-        save_json_to_file(&station_details_snapshot, &file_path)
-            .wrap_err_with(|| miette!("Failed to save station details snapshot."))?;
-
-        info!(
-            file_path = %file_path.display(),
-            "A snapshot of current station details have been saved to disk."
-        );
+        // DEBUGONLY
+        info!("DEBUGONLY: exiting after one snapshot");
+        return Ok(());
 
 
         // Wait for the configured amount of time
@@ -144,28 +436,25 @@ async fn station_details_fetching_loop(
         tokio::time::sleep(time_to_wait_until_next_capture).await;
     }
 
-    info!("Station details fetching loop has been cancelled, exiting.");
+    info!("Station and route snapshotting loop has been cancelled, exiting.");
     Ok(())
 }
 
-pub fn initialize_station_details_recording(
+
+pub fn initialize_station_and_route_details_snapshot_task(
     config: &LppConfiguration,
     http_client: Client,
     cancellation_token: CancellationToken,
 ) -> tokio::task::JoinHandle<Result<()>> {
     let station_fetching_span = info_span!("station-details-recorder");
     let station_details_fetching_future =
-        station_details_fetching_loop(config.clone(), http_client, cancellation_token)
+        station_and_route_details_snapshot_loop(config.clone(), http_client, cancellation_token)
             .instrument(station_fetching_span);
 
     info!("Spawning station details recorder task.");
     tokio::task::spawn(station_details_fetching_future)
 }
 
-
-/*
- * Route details capture
- */
 
 pub enum RetryableResult<O, E>
 where
@@ -257,6 +546,8 @@ where
     }
 }
 
+/*
+#[deprecated]
 async fn route_state_fetching_loop(
     configuration: LppConfiguration,
     client: Client,
@@ -294,8 +585,12 @@ async fn route_state_fetching_loop(
             "Fetched all routes, will get stations and timetables for each."
         );
 
-        let mut route_snapshots: Vec<RouteWithStationsAndTimetables> =
+        let mut route_snapshots: Vec<TripWithStationsAndTimetables> =
             Vec::with_capacity(all_routes.len());
+
+
+        // TODO Merge this and the station details loop - request timetables for all buses on the entire station
+        //      and then smartly merge them into a station and route snapshot instead of doing so many requests.
 
         for route in all_routes {
             info!(
@@ -332,7 +627,7 @@ async fn route_state_fetching_loop(
             };
 
 
-            let mut stations_with_timetables: Vec<StationWithTimetable> =
+            let mut stations_with_timetables: Vec<TripStationWithTimetable> =
                 Vec::with_capacity(stations_on_route.len());
 
             for station in stations_on_route {
@@ -385,13 +680,13 @@ async fn route_state_fetching_loop(
                     "Got new station + timetable."
                 );
 
-                stations_with_timetables.push(StationWithTimetable {
+                stations_with_timetables.push(TripStationWithTimetable {
                     station,
                     timetable: final_timetable,
                 });
             }
 
-            let route_snapshot = RouteWithStationsAndTimetables {
+            let route_snapshot = TripWithStationsAndTimetables {
                 captured_at,
                 route_details: route,
                 stations_on_route_with_timetables: stations_with_timetables,
@@ -452,6 +747,7 @@ async fn route_state_fetching_loop(
 }
 
 
+#[deprecated]
 pub fn initialize_route_state_recording(
     configuration: &LppConfiguration,
     client: Client,
@@ -466,12 +762,4 @@ pub fn initialize_route_state_recording(
     tokio::task::spawn(route_state_fetching_future)
 }
 
-
-/*
- * Bus arrival capture
  */
-
-
-pub fn initialize_arrival_recording() {
-    todo!();
-}

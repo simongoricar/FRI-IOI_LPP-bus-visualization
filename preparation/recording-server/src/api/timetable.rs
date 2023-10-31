@@ -1,14 +1,14 @@
 use chrono::{Local, Timelike};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use tracing::warn;
+use tracing::{debug, warn};
 use url::Url;
 
 use super::{
     errors::{FullUrlConstructionError, LppApiFetchError, RouteTimetableParseError},
     BaseBusRoute,
     BusRoute,
-    BusStationCode,
+    StationCode,
 };
 use crate::configuration::LppApiConfiguration;
 
@@ -20,6 +20,7 @@ use crate::configuration::LppApiConfiguration;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct RawTimetableResponse {
     success: bool,
+    message: Option<String>,
     data: RawTimetableData,
 }
 
@@ -89,7 +90,7 @@ struct RawTripTimetable {
     /// Example: `RUDNIK`.
     ///
     /// LPP documentation: "Name of the station".
-    name: String,
+    name: Option<String>,
 
     /// Full route name.
     ///
@@ -225,7 +226,7 @@ pub struct TripTimetable {
     /// (usually just the destination part of the `name` field).
     ///
     /// Example: `RUDNIK`.
-    pub short_trip_name: String,
+    pub short_trip_name: Option<String>,
 
     /// Whether this trip ends in a garage.
     ///
@@ -424,7 +425,7 @@ pub enum TimetableFetchMode {
 
 fn build_timetable_url<I>(
     api_configuration: &LppApiConfiguration,
-    station_code: &BusStationCode,
+    station_code: &StationCode,
     route_group_numbers: I,
     timetable_mode: &TimetableFetchMode,
 ) -> Result<Url, FullUrlConstructionError>
@@ -476,7 +477,7 @@ where
 pub async fn fetch_timetable<I>(
     api_configuration: &LppApiConfiguration,
     client: &Client,
-    station_code: &BusStationCode,
+    station_code: &StationCode,
     route_group_numbers: I,
     timetable_mode: TimetableFetchMode,
 ) -> Result<Vec<RouteGroupTimetable>, LppApiFetchError>
@@ -490,9 +491,14 @@ where
         &timetable_mode,
     )?;
 
+    debug!(
+        full_url = %full_url,
+        station_code = %station_code,
+        "Will fetch timetables for station from the LPP API."
+    );
+
     let response = client
         .get(full_url)
-        .header("User-Agent", &api_configuration.user_agent)
         .send()
         .await
         .map_err(LppApiFetchError::RequestError)?;
@@ -509,6 +515,21 @@ where
 
         return Err(LppApiFetchError::ClientHTTPError(response_status));
     } else if response_status.is_server_error() {
+        // Can be caused by: "No active routes on station 604021 or station-code is invalid".
+        // We should handle that case separately.
+        let response_raw_json = response
+            .json::<RawTimetableResponse>()
+            .await
+            .map_err(LppApiFetchError::ResponseDecodingError)?;
+
+        if !response_raw_json.success {
+            if let Some(message) = response_raw_json.message {
+                if message.starts_with("No active routes on station") {
+                    return Ok(Vec::new());
+                }
+            }
+        }
+
         return Err(LppApiFetchError::ServerHTTPError(response_status));
     }
 
@@ -552,7 +573,7 @@ mod tests {
         assert_eq!(
             build_timetable_url(
                 &api_configuration,
-                &BusStationCode::new("600012"),
+                &StationCode::new("600012"),
                 [BaseBusRoute::new_from_str("3").unwrap()],
                 &TimetableFetchMode::Manual { next_hours: 12, previous_hours: 12 },
             ).unwrap(),
@@ -562,7 +583,7 @@ mod tests {
         assert_eq!(
             build_timetable_url(
                 &api_configuration,
-                &BusStationCode::new("600012"),
+                &StationCode::new("600012"),
                 [BaseBusRoute::new_from_number(3), BaseBusRoute::new_from_number(18)],
                 &TimetableFetchMode::Manual { next_hours: 12, previous_hours: 12 },
             ).unwrap(),

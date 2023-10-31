@@ -5,8 +5,8 @@ use url::Url;
 
 use super::{
     errors::{FullUrlConstructionError, LppApiFetchError},
-    BusStationCode,
     GeographicalLocation,
+    StationCode,
     TripId,
 };
 use crate::configuration::LppApiConfiguration;
@@ -78,7 +78,7 @@ pub struct StationOnRoute {
     /// (useful in other station-related requests).
     ///
     /// Example: `201011`.
-    pub station_code: BusStationCode,
+    pub station_code: StationCode,
 
     /// Unique *internal* station identifier.
     /// Unused in other parts of the API.
@@ -105,7 +105,7 @@ pub struct StationOnRoute {
 impl From<RawStationOnRoute> for StationOnRoute {
     fn from(value: RawStationOnRoute) -> Self {
         Self {
-            station_code: BusStationCode::new(value.station_code),
+            station_code: StationCode::new(value.station_code),
             internal_station_id: value.station_int_id,
             name: value.name,
             location: GeographicalLocation::new(value.latitude, value.longitude),

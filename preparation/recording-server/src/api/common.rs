@@ -41,11 +41,11 @@ impl GeographicalLocation {
 /// in API responses from LPP and can be used in subsequent requests
 /// where the station ID is required. The `int_id` fields seem to
 /// only be internal IDs that are unusued in other parts of their API.
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Hash)]
 #[serde(transparent)]
-pub struct BusStationCode(String);
+pub struct StationCode(String);
 
-impl BusStationCode {
+impl StationCode {
     #[inline]
     pub fn new<S>(id: S) -> Self
     where
@@ -55,25 +55,25 @@ impl BusStationCode {
     }
 }
 
-impl From<String> for BusStationCode {
+impl From<String> for StationCode {
     fn from(value: String) -> Self {
         Self(value)
     }
 }
 
-impl From<&str> for BusStationCode {
+impl From<&str> for StationCode {
     fn from(value: &str) -> Self {
         Self(value.to_string())
     }
 }
 
-impl AsRef<str> for BusStationCode {
+impl AsRef<str> for StationCode {
     fn as_ref(&self) -> &str {
         &self.0
     }
 }
 
-impl Display for BusStationCode {
+impl Display for StationCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -85,7 +85,7 @@ impl Display for BusStationCode {
 /// (including a potential prefix and/or suffix).
 ///
 /// Example: `11B`.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct BusRoute {
     pub prefix: Option<String>,
     pub base_route_number: u32,
@@ -326,7 +326,7 @@ impl<'de> Deserialize<'de> for BusRoute {
 /// *without a prefix or suffix*, i.e. the "base" route.
 ///
 /// Example: `11`.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct BaseBusRoute(u32);
 
 impl BaseBusRoute {
