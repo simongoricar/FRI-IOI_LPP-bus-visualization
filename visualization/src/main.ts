@@ -1,22 +1,45 @@
+// noinspection JSPotentiallyInvalidConstructorUsage
+
 import "./styles/main.scss";
-import { LPPBusAPI } from "./buses/api.ts";
 
 
-import Leaflet from "leaflet";
-import P5 from "p5";
+// import Leaflet from "leaflet";
 import p5 from "p5";
 import Logger, { Colour } from "./core/logger.ts";
 import IOIMap from "./map";
 import { ProjectError } from "./core/errors.ts";
+import { loadStationsSnapshot } from "./lpp";
 
 const log = new Logger("main", Colour.LAUREL_GREEN);
-const api = new LPPBusAPI();
 
-let stations = await api.getAllStations({ cache: true });
-log.info("Got all LPP bus stations.")
-log.debug(stations);
+const stations = await loadStationsSnapshot("station-details_2023-10-31_17-56-15.488+UTC.json");
+log.info(`Loaded stations snapshot! Got ${stations.stationDetails.length} stations.`);
 
 let map: IOIMap;
+
+
+class Translate3D {
+    public x: number;
+    public y: number;
+    public z: number;
+
+    public constructor(x: number, y: number, z: number) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+}
+
+function parseTransformTranslate3DOnElement(element: HTMLElement): Translate3D | null {
+    const rawTransformStyle = element.style.transform;
+
+    const matches = rawTransformStyle.match(/translate3d\((-?\d+)px, (-?\d+)px, (-?\d+)px\)/);
+    if (matches === null) {
+        return null;
+    }
+
+    return new Translate3D(Number(matches[1]), Number(matches[2]), Number(matches[3]));
+}
 
 
 const p5SketchInitialization = (p: p5) => {
@@ -39,7 +62,7 @@ const p5SketchInitialization = (p: p5) => {
         const height = map.canvas.clientHeight;
 
         p.createCanvas(width, height, map.canvas);
-        p.frameRate(4);
+        p.frameRate(1);
     }
 
     p.draw = () => {
@@ -47,11 +70,44 @@ const p5SketchInitialization = (p: p5) => {
 
         const { top: mapTopOffset, left: mapLeftOffset } = map.map.getContainer().getBoundingClientRect();
 
+        const pixelOrigin = map.map.getPixelOrigin();
+        
+        let canvasTransform = parseTransformTranslate3DOnElement(map.canvas);
+        if (canvasTransform === null) {
+            log.warn(
+              "Failed to get 3D translation on canvas, skipping render."
+            );
 
-        for (const station of stations) {
-            const stationPixelCenter = map.map.latLngToContainerPoint(station.latLng());
+            return;
+        }
 
-            p.circle(stationPixelCenter.x + mapLeftOffset, stationPixelCenter.y + mapTopOffset, 10);
+
+        for (const station of stations.stationDetails) {
+            // TODO Fix p.circle not drawing at the correct point.
+
+            // DEBUGONLY
+            // if (station.stationCode !== "100021") {
+            //     continue;
+            // }
+
+            const stationLatLng = station.location.leafletLatLng();
+            const stationPixelPosition = map.map.project(
+              stationLatLng,
+              map.map.getZoom()
+            )
+              .subtract(pixelOrigin);
+
+            log.debug(
+              `Station ${station.name} has lat-lng of ${stationLatLng.toString()} and pixel position ${stationPixelPosition.toString()}`
+            );
+
+            p.circle(
+              stationPixelPosition.x + mapLeftOffset - canvasTransform.x,
+              stationPixelPosition.y + mapTopOffset - canvasTransform.y,
+              10,
+            );
+
+            // p.circle(stationPixelCenter.x + mapLeftOffset, stationPixelCenter.y + mapTopOffset, 10);
 
             // console.log(`${station.name} -> ${station.latLng().toString()} -> ${stationPixelCenter.toString()}`);
         }
@@ -88,4 +144,4 @@ if (appElement === null) {
     throw new Error("Invalid DOM.");
 }
 
-new P5(p5SketchInitialization, appElement)
+new p5(p5SketchInitialization, appElement);
