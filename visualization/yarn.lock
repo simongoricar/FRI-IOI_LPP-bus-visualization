@@ -209,7 +209,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/leaflet@npm:^1.9.7":
+"@types/leaflet-providers@npm:^1.2.3":
+  version: 1.2.3
+  resolution: "@types/leaflet-providers@npm:1.2.3"
+  dependencies:
+    "@types/leaflet": "npm:*"
+  checksum: 45966126e090f8023313cb09290e3d196a0384534d6965f1c3864211c80114ba60701d42bc09ba84f6da57d9fbeea4ad0de43dcd76109aac11558a393dc81290
+  languageName: node
+  linkType: hard
+
+"@types/leaflet@npm:*, @types/leaflet@npm:^1.9.7":
   version: 1.9.7
   resolution: "@types/leaflet@npm:1.9.7"
   dependencies:
@@ -794,6 +803,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"leaflet-providers@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "leaflet-providers@npm:2.0.0"
+  checksum: 54cfe716009e9bbd38d5b07309a11c72b5a83b75d7cec2cf915bef5fa6c943b9b06e75441492dd3bce1f817c58b651e11d7f48558400fad7ee54467d99511592
+  languageName: node
+  linkType: hard
+
 "leaflet@npm:^1.9.4":
   version: 1.9.4
   resolution: "leaflet@npm:1.9.4"
@@ -1143,9 +1159,11 @@ __metadata:
   resolution: "seminar-01-source@workspace:."
   dependencies:
     "@types/leaflet": "npm:^1.9.7"
+    "@types/leaflet-providers": "npm:^1.2.3"
     "@types/p5": "npm:^1.7.1"
     cors-anywhere: "npm:^0.4.4"
     leaflet: "npm:^1.9.4"
+    leaflet-providers: "npm:^2.0.0"
     p5: "npm:^1.7.0"
     sass: "npm:^1.69.4"
     typescript: "npm:^5.2.2"

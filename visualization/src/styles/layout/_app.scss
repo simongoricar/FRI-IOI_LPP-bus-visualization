@@ -1,4 +1,61 @@
+@use "../vars" as vars;
+
 #app {
   width: 100vw;
   height: 100vh;
+}
+
+.map-container {
+  position: relative;
+  z-index: 10;
+}
+
+.controls-container {
+  position: absolute;
+  z-index: 20;
+
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+
+  font-family: vars.$font-family-native;
+
+  pointer-events: none;
+}
+
+/*
+ * Individual controls
+ */
+
+.options-bar-container {
+  --options-bar__margin: 18px;
+
+  position: absolute;
+
+  bottom: 0;
+  width: calc(100% - 2 * var(--options-bar__margin));
+  margin: var(--options-bar__margin);
+
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+
+  .option-description {
+    padding-right: 6px;
+  }
+
+  .options-bar {
+    pointer-events: auto;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+
+    background-color: transparentize(vars.$colour-white, 0.08);
+    border-radius: 4px;
+    padding: 10px 14px;
+  }
 }

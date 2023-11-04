@@ -1,4 +1,4 @@
-import { AllStationsSnapshot } from "./models.ts";
+import { AllRoutesSnapshot, AllStationsSnapshot } from "./models.ts";
 
 export async function loadStationsSnapshot(
   fileName: string,
@@ -14,4 +14,20 @@ export async function loadStationsSnapshot(
     let jsonData = await data.json();
 
     return AllStationsSnapshot.fromRawData(jsonData);
+}
+
+export async function loadRoutesSnapshot(
+  fileName: string,
+): Promise<AllRoutesSnapshot> {
+    const fullUrl = `/data/${fileName}`;
+
+    let data = await fetch(fullUrl, {
+        method: "GET",
+        mode: "cors",
+        credentials: "omit",
+    });
+
+    let jsonData = await data.json();
+
+    return AllRoutesSnapshot.fromRawData(jsonData);
 }

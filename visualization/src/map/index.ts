@@ -1,5 +1,5 @@
 import Leaflet from "leaflet";
-import { ProjectError } from "../core/errors.ts";
+import "leaflet-providers";
 
 export const DEFAULT_LEAFLET_MAP_OPTIONS: Leaflet.MapOptions = {
     attributionControl: true,
@@ -50,15 +50,24 @@ export default class IOIMap {
         );
         this.map.attributionControl.setPrefix(false);
 
-        this.tiles = new Leaflet.TileLayer(
-          options?.tileLayerUrlTemplate
-            || "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        this.tiles = Leaflet.tileLayer.provider(
+          "Stadia.AlidadeSmoothDark",
           {
               ...DEFAULT_LEAFLET_TILE_OPTIONS,
               ...options?.tileLayerOptions
           }
         );
         this.tiles.addTo(this.map);
+
+        // this.tiles = new Leaflet.TileLayer(
+        //   options?.tileLayerUrlTemplate
+        //     || "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        //   {
+        //       ...DEFAULT_LEAFLET_TILE_OPTIONS,
+        //       ...options?.tileLayerOptions
+        //   }
+        // );
+        // this.tiles.addTo(this.map);
 
         // @ts-ignore
         // Leaflet.Layer.CanvasOverlay = Leaflet.Layer.extend({

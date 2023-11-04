@@ -1,6 +1,9 @@
 import { getOptionalField, getRequiredField } from "../core/utilities.ts";
 import { LatLng } from "leaflet";
 
+/*
+ * Station snapshot-related
+ */
 
 export class AllStationsSnapshot {
     public capturedAt: Date;
@@ -15,7 +18,7 @@ export class AllStationsSnapshot {
     }
 
     public static fromRawData(rawData: Record<string, any>): AllStationsSnapshot {
-        const capturedAt = new Date(Number(getRequiredField(rawData, "captured_at")));
+        const capturedAt = new Date(Number(getRequiredField(rawData, "captured_at")) * 1000);
 
         const rawStationDetails = getRequiredField(rawData, "station_details");
         let stationDetails: StationDetailsWithBusesAndTimetables[] = [];
@@ -178,6 +181,15 @@ export class RouteGroupTimetable {
     }
 }
 
+export function sortTimetableEntriesByTime(entries: TimetableEntry[]) {
+    entries.sort((first, second) => {
+        if (first.hour == second.hour) {
+            return first.minute - second.minute;
+        } else {
+            return first.hour - second.hour;
+        }
+    });
+}
 
 export class TripTimetable {
     public route: string;
@@ -214,6 +226,8 @@ export class TripTimetable {
         for (const rawEntry of rawTimetable) {
             timetable.push(TimetableEntry.fromRawData(rawEntry));
         }
+
+        sortTimetableEntriesByTime(timetable);
 
         const rawStations = getRequiredField(rawData, "stations");
         let stations: StationOnTimetable[] = [];
@@ -269,3 +283,188 @@ export class StationOnTimetable {
         return new StationOnTimetable(stationCode, name, stopNumber);
     }
 }
+
+/*
+ * Route snapshot-related
+ */
+
+export class AllRoutesSnapshot {
+    public capturedAt: Date;
+    public routes: TripWithStationsAndTimetables[];
+
+    constructor(
+      capturedAt: Date,
+      routes: TripWithStationsAndTimetables[],
+    ) {
+        this.capturedAt = capturedAt;
+        this.routes = routes;
+    }
+
+    public static fromRawData(rawData: Record<string, any>): AllRoutesSnapshot {
+        const capturedAt = new Date(Number(getRequiredField(rawData, "captured_at")) * 1000);
+
+        const rawRoutes = getRequiredField(rawData, "routes");
+        let routes: TripWithStationsAndTimetables[] = [];
+
+        for (const route of rawRoutes) {
+            routes.push(TripWithStationsAndTimetables.fromRawData(route));
+        }
+
+        return new AllRoutesSnapshot(capturedAt, routes);
+    }
+}
+
+export class TripWithStationsAndTimetables {
+    public capturedAt: Date;
+    public routeDetails: RouteDetails;
+    public stationsOnRouteWithTimetables: TripStationWithTimetable[];
+
+    constructor(
+      capturedAt: Date,
+      routeDetails: RouteDetails,
+      stationsOnRouteWithTimetables: TripStationWithTimetable[],
+    ) {
+        this.capturedAt = capturedAt;
+        this.routeDetails = routeDetails;
+        this.stationsOnRouteWithTimetables = stationsOnRouteWithTimetables;
+    }
+
+    public static fromRawData(rawData: Record<string, any>): TripWithStationsAndTimetables {
+        const capturedAt = new Date(Number(getRequiredField(rawData, "captured_at")) * 1000);
+        const routeDetails = RouteDetails.fromRawData(getRequiredField(rawData, "route_details"));
+
+        const rawStationsOnRouteWithTimetables = getRequiredField(rawData, "stations_on_route_with_timetables");
+        let stationsOnRouteWithTimetables: TripStationWithTimetable[] = [];
+
+        for (const station of rawStationsOnRouteWithTimetables) {
+            stationsOnRouteWithTimetables.push(TripStationWithTimetable.fromRawData(station));
+        }
+
+        return new TripWithStationsAndTimetables(capturedAt, routeDetails, stationsOnRouteWithTimetables);
+    }
+}
+
+export class RouteDetails {
+    public routeId: string;
+    public tripId: string;
+    public internalTripId: number;
+    public route: string;
+    public name: string;
+    public shortName: string | null;
+    public routeShape: RouteGeoJsonShape | null;
+
+    constructor(
+      routeId: string,
+      tripId: string,
+      internalTripId: number,
+      route: string,
+      name: string,
+      shortName: string | null,
+      routeShape: RouteGeoJsonShape | null,
+    ) {
+        this.routeId = routeId;
+        this.tripId = tripId;
+        this.internalTripId = internalTripId;
+        this.route = route;
+        this.name = name;
+        this.shortName = shortName;
+        this.routeShape = routeShape;
+    }
+
+    public static fromRawData(rawData: Record<string, any>): RouteDetails {
+        const routeId = String(getRequiredField(rawData, "route_id"));
+        const tripId = String(getRequiredField(rawData, "trip_id"));
+        const internalTripId = Number(getRequiredField(rawData, "internal_trip_id"));
+        const route = String(getRequiredField(rawData, "route"));
+        const name = String(getRequiredField(rawData, "name"));
+
+        const shortNameRaw = getOptionalField(rawData, "short_name", null);
+        const shortName = shortNameRaw === null ? null : String(shortNameRaw);
+
+        const routeShapeRaw = getOptionalField(rawData, "route_shape", null);
+        const routeShape = routeShapeRaw === null ? null : RouteGeoJsonShape.fromRawData(routeShapeRaw);
+
+        return new RouteDetails(routeId, tripId, internalTripId, route, name, shortName, routeShape);
+    }
+}
+
+export class RouteGeoJsonShape {
+    public pathCoordinates: [number, number][];
+    public boundingBox: [number, number, number, number];
+
+    constructor(
+      pathCoordinates: [number, number][],
+      boundingBox: [number, number, number, number]
+    ) {
+        this.pathCoordinates = pathCoordinates;
+        this.boundingBox = boundingBox;
+    }
+
+    public static fromRawData(rawData: Record<string, any>): RouteGeoJsonShape {
+        const pathCoordinates = getRequiredField(rawData, "path_coordinates");
+        const boundingBox = getRequiredField(rawData, "bounding_box");
+
+        return new RouteGeoJsonShape(pathCoordinates, boundingBox);
+    }
+}
+
+export class TripStationWithTimetable {
+    public station: StationOnRoute;
+    public timetable: TripTimetable;
+
+    constructor(
+      station: StationOnRoute,
+      timetable: TripTimetable
+    ) {
+        this.station = station;
+        this.timetable = timetable;
+    }
+
+    public static fromRawData(rawData: Record<string, any>): TripStationWithTimetable {
+        const station = StationOnRoute.fromRawData(getRequiredField(rawData, "station"));
+        const timetable = TripTimetable.fromRawData(getRequiredField(rawData, "timetable"));
+
+        return new TripStationWithTimetable(station, timetable);
+    }
+}
+
+export class StationOnRoute {
+    public stationCode: string;
+    public internalStationId: number;
+    public name: string;
+    public location: GeographicalLocation;
+    public stopNumber: number;
+
+    constructor(
+      stationCode: string,
+      internalStationId: number,
+      name: string,
+      location: GeographicalLocation,
+      stopNumber: number,
+    ) {
+        this.stationCode = stationCode;
+        this.internalStationId = internalStationId;
+        this.name = name;
+        this.location = location;
+        this.stopNumber = stopNumber;
+    }
+
+    public static fromRawData(rawData: Record<string, any>): StationOnRoute {
+        const stationCode = String(getRequiredField(rawData, "station_code"));
+        const internalStationId = Number(getRequiredField(rawData, "internal_station_id"));
+        const name = String(getRequiredField(rawData, "name"));
+        const location = GeographicalLocation.fromRawData(getRequiredField(rawData, "location"));
+        const stopNumber = Number(getRequiredField(rawData, "stop_number"));
+
+        return new StationOnRoute(
+          stationCode,
+          internalStationId,
+          name,
+          location,
+          stopNumber
+        );
+    }
+}
+
+
+

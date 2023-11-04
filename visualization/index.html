@@ -3,13 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IOI: Seminar 1 (Simon Goričar)</title>
+    <title>Vizualizacija prihoda LPP avtobusov (Simon Goričar, seminarska naloga 1 pri IOI)</title>
   </head>
   <body>
     <div id="app">
+
+
       <div class="map-container">
         <div id="map"></div>
       </div>
+
+
+      <div class="controls-container">
+
+        <div class="options-bar-container">
+
+          <div class="options-bar">
+            <span class="option-show-stations">
+            <span class="option-description">Prikaži postaje</span>
+            <label class="switch">
+              <input type="checkbox" id="option-show-stations-input">
+              <span class="switch__slider"></span>
+            </label>
+          </span>
+          </div>
+
+        </div>
+
+      </div>
+
+
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
