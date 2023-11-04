@@ -7,7 +7,7 @@ use crate::api::{
     routes_on_station::TripOnStation,
     station_details::StationDetails,
     stations_on_route::StationOnRoute,
-    timetable::{RouteGroupTimetable, TimetableEntry, TripTimetable},
+    timetable::{RouteGroupTimetable, TripTimetable},
     GeographicalLocation,
     StationCode,
 };
@@ -18,13 +18,13 @@ use crate::api::{
 pub struct AllStationsSnapshot {
     #[serde_as(as = "TimestampSecondsWithFrac<String>")]
     pub captured_at: DateTime<Utc>,
-    pub station_details: Vec<StationDetailsWithBusDetailsAndTimetables>,
+    pub station_details: Vec<StationDetailsWithBusesAndTimetables>,
 }
 
 impl AllStationsSnapshot {
     pub fn new(
         timestamp: DateTime<Utc>,
-        station_details: Vec<StationDetailsWithBusDetailsAndTimetables>,
+        station_details: Vec<StationDetailsWithBusesAndTimetables>,
     ) -> Self {
         Self {
             captured_at: timestamp,
@@ -36,7 +36,7 @@ impl AllStationsSnapshot {
 
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct StationDetailsWithBusDetailsAndTimetables {
+pub struct StationDetailsWithBusesAndTimetables {
     /// Unique bus station identifier
     /// (useful in other station-related requests).
     ///
@@ -63,7 +63,7 @@ pub struct StationDetailsWithBusDetailsAndTimetables {
     pub timetables: Vec<RouteGroupTimetable>,
 }
 
-impl StationDetailsWithBusDetailsAndTimetables {
+impl StationDetailsWithBusesAndTimetables {
     #[inline]
     pub fn from_station_and_trips(
         station: StationDetails,

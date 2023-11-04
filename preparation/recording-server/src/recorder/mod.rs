@@ -34,7 +34,7 @@ use crate::{
     recorder::formats::{
         AllRoutesSnapshot,
         AllStationsSnapshot,
-        StationDetailsWithBusDetailsAndTimetables,
+        StationDetailsWithBusesAndTimetables,
         TripStationWithTimetable,
         TripWithStationsAndTimetables,
     },
@@ -209,7 +209,7 @@ async fn make_station_and_route_snapshot(
         }
 
 
-        let station_with_trips = StationDetailsWithBusDetailsAndTimetables::from_station_and_trips(
+        let station_with_trips = StationDetailsWithBusesAndTimetables::from_station_and_trips(
             station,
             trips_on_station,
             timetables,
