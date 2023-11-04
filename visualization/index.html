@@ -1,39 +1,60 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vizualizacija prihoda LPP avtobusov (Simon Goričar, seminarska naloga 1 pri IOI)</title>
-  </head>
-  <body>
-    <div id="app">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vizualizacija prihoda LPP avtobusov (Simon Goričar, seminarska naloga 1 pri IOI)</title>
+</head>
+<body>
+<div id="app">
 
 
-      <div class="map-container">
-        <div id="map"></div>
-      </div>
+  <div class="map-container">
+    <div id="map"></div>
+  </div>
 
 
-      <div class="controls-container">
+  <div class="controls-container">
+    <div class="show-time-container">
+          <span class="show-time">
+            <span class="hour" id="show-time-hour-span">5</span>
+            <span class="colon">:</span>
+            <span class="minute" id="show-time-minute-span">5</span>
+          </span>
+    </div>
 
-        <div class="options-bar-container">
-
-          <div class="options-bar">
-            <span class="option-show-stations">
-            <span class="option-description">Prikaži postaje</span>
+    <div class="options-bar-container">
+      <div class="options-bar">
+        <span class="option-show-stations">
+            <span class="option-description">
+              Prikaži postaje
+              <span id="show-stations-demo-circle"></span>
+            </span>
             <label class="switch">
               <input type="checkbox" id="option-show-stations-input">
               <span class="switch__slider"></span>
             </label>
+        </span>
+
+        <span class="options-vertical-spacer"></span>
+
+        <span class="option-show-droplets">
+          <span class="option-description">
+            Prikaži prihode
+            <span id="show-arrivals-demo-circle"></span>
           </span>
-          </div>
-
-        </div>
-
+          <label class="switch">
+              <input type="checkbox" id="option-show-arrivals-input">
+              <span class="switch__slider"></span>
+          </label>
+        </span>
       </div>
-
-
     </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+
+  </div>
+
+
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
 </html>

@@ -25,8 +25,44 @@
 }
 
 /*
- * Individual controls
+ * Individual controls and info
  */
+
+.show-time-container {
+  --options-time__margin: 18px;
+  position: absolute;
+
+  top: 0;
+  width: calc(100% - 2 * var(--options-time__margin));
+  margin: var(--options-time__margin);
+
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+
+  .show-time {
+    padding: 6px 10px;
+    background-color: transparentize(vars.$color-background-dark, 0.1);
+    border-radius: 10px;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+
+    span {
+      font-size: 4.6rem;
+      font-weight: bold;
+      color: vars.$colour-white;
+    }
+
+    .colon {
+      margin: 0 3px 2px;
+    }
+  }
+}
+
 
 .options-bar-container {
   --options-bar__margin: 18px;
@@ -48,6 +84,7 @@
 
   .options-bar {
     pointer-events: auto;
+    position: relative;
 
     display: flex;
     flex-direction: row;
@@ -58,4 +95,33 @@
     border-radius: 4px;
     padding: 10px 14px;
   }
+}
+
+.options-vertical-spacer {
+  display: inline-block;
+  width: 2px;
+  height:  18px;
+  margin: 2px 12px;
+
+  background-color: transparentize(vars.$color-background-dark, 0.5);
+}
+
+#show-stations-demo-circle {
+  width: 10px;
+  height: 10px;
+  background-color: #ee33ad;
+  border-radius: 50%;
+  display: inline-block;
+
+  margin: 0 6px 0 2px;
+}
+
+#show-arrivals-demo-circle {
+  width: 10px;
+  height: 10px;
+  background-color: #3C99F0;
+  border-radius: 50%;
+  display: inline-block;
+
+  margin: 0 6px 0 2px;
 }

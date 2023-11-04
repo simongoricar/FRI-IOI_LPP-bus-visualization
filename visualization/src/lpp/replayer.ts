@@ -67,7 +67,7 @@ export class ArrivalSet {
     }
 }
 
-export class BusArrivalReplayer {
+export class BusArrivalPlayback {
     // This will be untouched, always.
     public stationsSnapshot: AllStationsSnapshot;
 
@@ -78,7 +78,7 @@ export class BusArrivalReplayer {
         let optimizedArrivals: Map<string, ArrivalSet> = new Map();
 
         for (const stationDetails of this.stationsSnapshot.stationDetails) {
-            const location = structuredClone(stationDetails.location);
+            const location = stationDetails.location.clone();
 
             for (const timetable of stationDetails.timetables) {
                 for (const tripTimetable of timetable.tripTimetables) {

@@ -107,6 +107,10 @@ export class GeographicalLocation {
     public leafletLatLng(): LatLng {
         return new LatLng(this.latitude, this.longitude);
     }
+
+    public clone(): GeographicalLocation {
+        return new GeographicalLocation(this.latitude, this.longitude);
+    }
 }
 
 

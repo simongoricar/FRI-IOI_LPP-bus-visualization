@@ -1,5 +1,6 @@
 import Leaflet from "leaflet";
 import "leaflet-providers";
+import { CanvasV2 } from "./simpler-canvas.ts";
 
 export const DEFAULT_LEAFLET_MAP_OPTIONS: Leaflet.MapOptions = {
     attributionControl: true,
@@ -91,10 +92,13 @@ export default class IOIMap {
         //     }
         // });
 
-        this.leafletCanvas = new Leaflet.Canvas();
+        // this.leafletCanvas = new Leaflet.Canvas();
+        // this.map.addLayer(this.leafletCanvas);
+
+        this.leafletCanvas = new CanvasV2();
         this.map.addLayer(this.leafletCanvas);
 
         // @ts-ignore
-        this.canvas = this.leafletCanvas._container;
+        this.canvas = this.leafletCanvas.getCanvasElement();
     }
 }

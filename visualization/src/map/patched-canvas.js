@@ -24,7 +24,7 @@ export const Canvas = Renderer.extend({
 
         // Redraw vectors since canvas is cleared upon removal,
         // in case of removing the renderer itself from the map.
-        this._draw();
+        // this._draw();
     },
 
     _initContainer() {
@@ -80,16 +80,16 @@ export const Canvas = Renderer.extend({
           -b.min.y * s);
 
         // Tell paths to redraw themselves
-        this.fire('update');
+        // this.fire('update');
     },
 
     _reset() {
         Renderer.prototype._reset.call(this);
 
-        if (this._postponeUpdatePaths) {
-            this._postponeUpdatePaths = false;
-            this._updatePaths();
-        }
+        // if (this._postponeUpdatePaths) {
+        //     this._postponeUpdatePaths = false;
+        //     this._updatePaths();
+        // }
     },
 
     _initPath(layer) {
@@ -191,8 +191,8 @@ export const Canvas = Renderer.extend({
             this._redrawBounds.max._ceil();
         }
 
-        this._clear(); // clear layers in redraw bounds
-        this._draw(); // draw layers
+        // this._clear(); // clear layers in redraw bounds
+        // this._draw(); // draw layers
 
         this._redrawBounds = null;
     },
