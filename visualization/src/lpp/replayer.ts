@@ -1,8 +1,31 @@
-import { AllRoutesSnapshot, AllStationsSnapshot, GeographicalLocation } from "./models.ts";
+import { AllStationsSnapshot, GeographicalLocation } from "./models.ts";
 import { clamp } from "../utilities.ts";
+import { ProjectError } from "../core/errors.ts";
 
-export class SimulatedTimeOfDay {
+export class RelativeMinutes {
+    // Can be fractional (and is not bounded to be smaller than 60).
+    public minute: number;
+
+    constructor(
+      minute: number,
+    ) {
+        this.minute = minute;
+    }
+
+    static fromTimeOfDay(timeOfDay: TimeOfDay): RelativeMinutes {
+        return new RelativeMinutes(timeOfDay.hour * 60 + timeOfDay.minute);
+    }
+
+    getTotalMinutes(): number {
+        return this.minute;
+    }
+}
+
+export class TimeOfDay {
+    // Whole number.
     public hour: number;
+
+    // Can be fractional.
     public minute: number;
 
     constructor(
@@ -13,23 +36,37 @@ export class SimulatedTimeOfDay {
         this.minute = clamp(initialMinute, 0, 59);
     }
 
-    resetTimeTo(hour: number, minute: number) {
+    public resetTimeTo(hour: number, minute: number) {
         this.hour = clamp(hour, 1, 24);
         this.minute = clamp(minute, 0, 59);
     }
 
-    tickOneMinute() {
-        this.minute += 1;
-
-        if (this.minute >= 60) {
+    private reflowUnits() {
+        while (this.minute >= 60) {
             this.hour += 1;
-            this.minute = 0;
+            this.minute -= 60;
         }
 
-        // LPP API's hours go from 1 to 24 (e.g. 24:22 is 22 minutes after midnight).
-        if (this.hour >= 25) {
-            this.hour = 1;
+        while (this.hour >= 25) {
+            this.hour -= 24;
         }
+    }
+
+    public tick(minutes: number) {
+        this.minute += minutes;
+        this.reflowUnits();
+    }
+
+    public elapsedSince(preceedingTime: TimeOfDay): RelativeMinutes {
+        if (preceedingTime.hour > this.hour) {
+            throw new ProjectError("Invalid elapsedSince call: preceedingTime comes after us.");
+        } else if (preceedingTime.hour === this.hour && preceedingTime.minute > this.minute) {
+            throw new ProjectError("Invalid elapsedSince call: preceedingTime comes after us.");
+        }
+
+        return new RelativeMinutes(
+          (this.hour - preceedingTime.hour) * 60 + (this.minute - preceedingTime.minute)
+        );
     }
 }
 
@@ -47,22 +84,20 @@ export class BusArrival {
 
 export function sortArrivalSetArray(array: ArrivalSet[]) {
     array.sort((first, second) => {
-        if (first.hour == second.hour) {
-            return first.minute - second.minute;
+        if (first.time.hour == second.time.hour) {
+            return first.time.minute - second.time.minute;
         } else {
-            return first.hour - second.hour;
+            return first.time.hour - second.time.hour;
         }
     });
 }
 
 export class ArrivalSet {
-    public hour: number;
-    public minute: number;
+    public time: TimeOfDay;
     public arrivals: BusArrival[];
 
-    constructor(hour: number, minute: number, arrivals: BusArrival[]) {
-        this.hour = hour;
-        this.minute = minute;
+    constructor(time: TimeOfDay, arrivals: BusArrival[]) {
+        this.time = time;
         this.arrivals = arrivals;
     }
 }
@@ -71,7 +106,7 @@ export class BusArrivalPlayback {
     // This will be untouched, always.
     public stationsSnapshot: AllStationsSnapshot;
 
-    public currentDayTime: SimulatedTimeOfDay;
+    public currentDayTime: TimeOfDay;
     public optimizedArrivals: ArrivalSet[];
 
     private generateOptimizedArrivals(): ArrivalSet[] {
@@ -100,8 +135,7 @@ export class BusArrivalPlayback {
                             existingArrivalSet.arrivals.push(new BusArrival(route, tripName, location));
                         } else {
                             const newArrivalSet = new ArrivalSet(
-                              hour,
-                              minute,
+                              new TimeOfDay(hour, minute),
                               [
                                 new BusArrival(route, tripName, location)
                               ]
@@ -123,14 +157,14 @@ export class BusArrivalPlayback {
         return optimizedArrivalsArray;
     }
 
-    private cutArrivalSetsBeforeOrAtTime(timeOfDay: SimulatedTimeOfDay, arrivalSets: ArrivalSet[]): ArrivalSet[] {
+    private cutArrivalSetsBeforeOrAtTime(timeOfDay: TimeOfDay, arrivalSets: ArrivalSet[]): ArrivalSet[] {
         const hour = timeOfDay.hour;
         const minute = timeOfDay.minute;
 
         return arrivalSets.filter(
           (arrivalSet) => {
-              const arrivalHour = arrivalSet.hour;
-              const arrivalMinute = arrivalSet.minute;
+              const arrivalHour = arrivalSet.time.hour;
+              const arrivalMinute = arrivalSet.time.minute;
 
               if (arrivalHour < hour) {
                   return false;
@@ -147,9 +181,8 @@ export class BusArrivalPlayback {
         );
     }
 
-    constructor(stationsSnapshot: AllStationsSnapshot) {
-        // DEBUGONLY
-        this.currentDayTime = new SimulatedTimeOfDay(10, 30);
+    constructor(stationsSnapshot: AllStationsSnapshot, initialSimulationTime: TimeOfDay) {
+        this.currentDayTime = initialSimulationTime;
 
         // This will be untouched, always.
         this.stationsSnapshot = stationsSnapshot;
@@ -160,15 +193,33 @@ export class BusArrivalPlayback {
         );
     }
 
-    getTimeOfDay(): SimulatedTimeOfDay {
+    public getTimeOfDay(): TimeOfDay {
         return this.currentDayTime
     }
 
-    tickOneMinuteForward(): ArrivalSet | null {
-        this.currentDayTime.tickOneMinute();
+    public tick(minutes: number): ArrivalSet[] {
+        this.currentDayTime.tick(minutes);
 
         const hour = this.currentDayTime.hour;
         const minute = this.currentDayTime.minute;
+
+        let arrivalSets: ArrivalSet[] = [];
+
+        while (true) {
+            const nextArrivalSet = this.optimizedArrivals[0];
+            if (typeof nextArrivalSet === "undefined") {
+                break;
+            }
+
+            // If the next arrival is in this minute, we remove it
+            // from our optimized arrivals and return it.
+            if (nextArrivalSet.time.hour <= hour && nextArrivalSet.time.minute <= minute) {
+                this.optimizedArrivals.shift();
+                arrivalSets.push(nextArrivalSet);
+            } else {
+                break;
+            }
+        }
 
         // If we're past a whole day (having consumed all the arrivals),
         // we just reload them from the snapshot.
@@ -177,19 +228,9 @@ export class BusArrivalPlayback {
               this.currentDayTime,
               this.generateOptimizedArrivals()
             );
-            return null;
-        }
-
-        const nextArrivalSet = this.optimizedArrivals[0];
-
-        // If the next arrival is in this minute, we remove it
-        // from our optimized arrivals and return it.
-        if (nextArrivalSet.hour == hour && nextArrivalSet.minute === minute) {
-            this.optimizedArrivals.shift();
-            return nextArrivalSet;
         }
 
         // If no arrival happens in the next minute, we return `null`.
-        return null;
+        return arrivalSets;
     }
 }

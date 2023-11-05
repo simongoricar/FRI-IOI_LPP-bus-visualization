@@ -6,8 +6,11 @@
   <title>Vizualizacija prihoda LPP avtobusov (Simon Goričar, seminarska naloga 1 pri IOI)</title>
 </head>
 <body>
-<div id="app">
-
+<div id="app" class="not-ready">
+  <div class="loading-indicator">
+    <span class="loading-heading" id="loading-heading-span">Nalagam</span>
+    <span class="loading-details" id="loading-details-span"></span>
+  </div>
 
   <div class="map-container">
     <div id="map"></div>
@@ -15,16 +18,83 @@
 
 
   <div class="controls-container">
-    <div class="show-time-container">
-          <span class="show-time">
-            <span class="hour" id="show-time-hour-span">5</span>
-            <span class="colon">:</span>
-            <span class="minute" id="show-time-minute-span">5</span>
+    <div class="show-datetime-root">
+      <div class="show-datetime-container">
+
+          <span class="show-date">
+            <span class="previous-day-container">
+              <button id="previous-day-button">
+                <!-- chevrons-left.svg -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     class="feather feather-chevrons-left"><polyline points="11 17 6 12 11 7"></polyline><polyline
+                  points="18 17 13 12 18 7"></polyline></svg>
+              </button>
+            </span>
+            <span class="date" id="show-date-span">05. 11. 2023 (nedelja)</span>
+            <span class="next-day-container">
+              <button id="next-day-button">
+                <!-- chevrons-right.svg -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     class="feather feather-chevrons-right"><polyline points="13 17 18 12 13 7"></polyline><polyline
+                  points="6 17 11 12 6 7"></polyline></svg>
+              </button>
+            </span>
           </span>
+
+
+          <span class="show-time">
+
+            <span class="reset-time-container">
+              <button id="reset-time-toggle">
+                <!-- sunrise.svg -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     class="feather feather-sunrise"><path d="M17 18a5 5 0 0 0-10 0"></path><line x1="12" y1="2" x2="12"
+                                                                                                  y2="9"></line><line
+                  x1="4.22" y1="10.22" x2="5.64" y2="11.64"></line><line x1="1" y1="18" x2="3" y2="18"></line><line
+                  x1="21" y1="18" x2="23" y2="18"></line><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"></line><line
+                  x1="23" y1="22" x2="1" y2="22"></line><polyline points="8 6 12 2 16 6"></polyline></svg>
+              </button>
+            </span>
+
+            <span class="current-time-container" id="time-container">
+              <span class="hour" id="show-time-hour-span">5</span>
+              <span class="colon">:</span>
+              <span class="minute" id="show-time-minute-span">5</span>
+
+              <span class="time-paused-indicator-container">
+                <span class="time-paused-indicator">
+                  <!-- pause.svg -->
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                       class="feather feather-pause"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4"
+                                                                                                          width="4"
+                                                                                                          height="16"></rect></svg>
+                </span>
+              </span>
+            </span>
+
+            <span class="fast-forward-time-container">
+              <label>
+                <input type="checkbox" id="fast-forward-time-toggle">
+                <!-- fast-forward.svg -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     class="feather feather-fast-forward"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon
+                  points="2 19 11 12 2 5 2 19"></polygon></svg>
+              </label>
+            </span>
+
+          </span>
+
+      </div>
     </div>
 
     <div class="options-bar-container">
       <div class="options-bar">
+
         <span class="option-show-stations">
             <span class="option-description">
               Prikaži postaje
@@ -48,6 +118,7 @@
               <span class="switch__slider"></span>
           </label>
         </span>
+
       </div>
     </div>
 

@@ -6,36 +6,190 @@ import Logger, { Colour } from "./core/logger.ts";
 import IOIMap from "./map";
 import { ProjectError } from "./core/errors.ts";
 import { loadRoutesSnapshot, loadStationsSnapshot } from "./lpp";
-import { BusArrivalPlayback } from "./lpp/replayer.ts";
+import { BusArrivalPlayback, RelativeMinutes, TimeOfDay } from "./lpp/replayer.ts";
 import { LatLng, Point } from "leaflet";
-import { GeographicalLocation } from "./lpp/models.ts";
+import { AllRoutesSnapshot, AllStationsSnapshot, GeographicalLocation } from "./lpp/models.ts";
 import { clamp } from "./utilities.ts";
 
 const log = new Logger("main", Colour.LAUREL_GREEN);
 
-
-const stations = await loadStationsSnapshot("station-details_2023-10-31_17-56-15.488+UTC.json");
-log.info(`Loaded stations snapshot! Got ${stations.stationDetails.length} stations.`);
-
-const routes = await loadRoutesSnapshot("route-details_2023-10-31_17-56-15.488+UTC.json");
-log.info(`Loaded routes snapshot! Got ${routes.routes.length} routes.`);
-
-
 class Droplet {
-    public timeSinceStart: number;
+    public initializationTime: TimeOfDay;
     public location: LatLng;
 
-    constructor(location: GeographicalLocation) {
-        this.timeSinceStart = 0;
+    constructor(initializationTime: TimeOfDay, location: GeographicalLocation) {
+        this.initializationTime = initializationTime;
         this.location = location.leafletLatLng();
     }
 
-    tickTime(deltaTime: number) {
-        this.timeSinceStart += deltaTime;
+    public timeSinceInitialization(currentTime: TimeOfDay): RelativeMinutes {
+        return currentTime.elapsedSince(this.initializationTime);
     }
 
-    hasFinished() {
-        return this.timeSinceStart >= dropletFadeOutTimeInSeconds;
+    hasFinished(currentTime: TimeOfDay) {
+        return this.timeSinceInitialization(currentTime).getTotalMinutes()
+          >= dropletLifetimeInSimulatedMinutes;
+    }
+}
+
+const ALL_STATION_SNAPSHOTS = [
+  "station-details_2023-10-31_17-56-15.488+UTC.json",
+  "station-details_2023-11-05_19-11-53.567+UTC.json"
+];
+
+const ALL_ROUTE_SNAPSHOTS = [
+  "route-details_2023-10-31_17-56-15.488+UTC.json",
+  "route-details_2023-11-05_19-11-53.567+UTC.json"
+];
+
+async function loadAllAvailableStationSnapshots(): Promise<AllStationsSnapshot[]> {
+    let stationSnapshots: AllStationsSnapshot[] = [];
+
+    let currentSnapshotIndex = 0;
+    const totalSnapshots = ALL_STATION_SNAPSHOTS.length;
+
+    for (const stationSnapshotFilename of ALL_STATION_SNAPSHOTS) {
+        updateLoadingDetails(`postaje (${currentSnapshotIndex + 1}/${totalSnapshots})`);
+
+        const snapshot = await loadStationsSnapshot(stationSnapshotFilename);
+        stationSnapshots.push(snapshot);
+
+        log.info(
+          `Loaded stations snapshot "${stationSnapshotFilename}"`
+        );
+
+        currentSnapshotIndex += 1;
+    }
+
+    log.info(`Loaded all ${stationSnapshots.length} stations snapshots.`);
+
+    return stationSnapshots;
+}
+
+async function loadAllAvailableRouteSnapshots(): Promise<AllRoutesSnapshot[]> {
+    let routeSnapshots: AllRoutesSnapshot[] = [];
+
+    let currentSnapshotIndex = 0;
+    const totalSnapshots = ALL_ROUTE_SNAPSHOTS.length;
+
+    for (const routeSnapshotFilename of ALL_ROUTE_SNAPSHOTS) {
+        updateLoadingDetails(`avtobuse (${currentSnapshotIndex + 1}/${totalSnapshots})`);
+
+        const snapshot = await loadRoutesSnapshot(routeSnapshotFilename);
+        routeSnapshots.push(snapshot);
+
+        log.info(
+          `Loaded route snapshot "${routeSnapshotFilename}"`
+        );
+
+        currentSnapshotIndex += 1;
+    }
+
+    log.info(`Loaded all ${routeSnapshots.length} route snapshots.`);
+
+    return routeSnapshots;
+}
+
+function selectStationSnapshot(snapshotIndex: number) {
+    const snapshot = availableStationSnapshots[snapshotIndex];
+    if (typeof snapshot === "undefined") {
+        throw new Error("Invalid station snapshot index: out of bounds.");
+    }
+
+    // Modify visible date.
+    const year = snapshot.capturedAt.getFullYear();
+    const month = snapshot.capturedAt.getMonth() + 1;
+    const day = snapshot.capturedAt.getDate();
+
+    const dayOfWeek = snapshot.capturedAt.getDay();
+    let dayOfWeekDescribed: string;
+    switch (dayOfWeek) {
+        case 0:
+            dayOfWeekDescribed = "nedelja";
+            break;
+        case 1:
+            dayOfWeekDescribed = "ponedeljek";
+            break;
+        case 2:
+            dayOfWeekDescribed = "torek";
+            break;
+        case 3:
+            dayOfWeekDescribed = "sreda";
+            break;
+        case 4:
+            dayOfWeekDescribed = "četrtek";
+            break;
+        case 5:
+            dayOfWeekDescribed = "petek";
+            break;
+        case 6:
+            dayOfWeekDescribed = "sobota";
+            break;
+        default:
+            log.error(`Invalid day of week: ${dayOfWeek}.`);
+            dayOfWeekDescribed = "";
+    }
+
+    dateLabelElement.innerText =
+      `${String(day).padStart(2, " ")}. ${String(month).padStart(2, " ")}. ${year} (${dayOfWeekDescribed})`;
+
+
+    // Perform other initialization.
+    selectedStationSnapshotIndex = snapshotIndex;
+    selectedStationSnapshot = snapshot;
+
+    playback = new BusArrivalPlayback(selectedStationSnapshot, initialSimulationTime);
+
+    // Reset draw state
+    activeDroplets = [];
+}
+
+function toggleSimulationPause() {
+    if (!isSimulationPaused) {
+        // Pause
+        timeContainerElement.classList.add("paused");
+        isSimulationPaused = true;
+    } else {
+        // Unpause
+        timeContainerElement.classList.remove("paused");
+        isSimulationPaused = false;
+    }
+}
+
+function goToPreviousDay() {
+    let targetSnapshotIndex = selectedStationSnapshotIndex - 1;
+    if (targetSnapshotIndex < 0) {
+        targetSnapshotIndex = availableStationSnapshots.length - 1;
+    }
+
+    log.info("Going to previous snapshot: " + targetSnapshotIndex);
+    selectStationSnapshot(targetSnapshotIndex);
+}
+
+function goToNextDay() {
+    let targetSnapshotIndex = selectedStationSnapshotIndex + 1;
+    if (targetSnapshotIndex > (availableStationSnapshots.length - 1)) {
+        targetSnapshotIndex = 0;
+    }
+
+    log.info("Going to next snapshot: " + targetSnapshotIndex);
+    selectStationSnapshot(targetSnapshotIndex);
+}
+
+function resetDay() {
+    log.info("Resetting day.");
+    selectStationSnapshot(selectedStationSnapshotIndex);
+}
+
+function toggleFastForwardSimulation() {
+    if (!isFastForwarding) {
+        log.info("Fast-forwarding.");
+        currentRealTimeSecondsPerSimulatedMinute = realTimeSecondsPerSimulatedMinute / 6;
+        isFastForwarding = true;
+    } else {
+        log.info("Resetting simulation speed to normal.");
+        currentRealTimeSecondsPerSimulatedMinute = realTimeSecondsPerSimulatedMinute;
+        isFastForwarding = false;
     }
 }
 
@@ -43,13 +197,16 @@ class Droplet {
  * SKETCH CONFIGURATION begin
  */
 
-const simulationMinutesPerRealTimeSecond = 0.5;
+const simulationMinutesPerRealTimeSecond = 3;
+const realTimeSecondsPerSimulatedMinute = 1 / simulationMinutesPerRealTimeSecond;
+
+const initialSimulationTime = new TimeOfDay(4, 40);
 
 
 const stationCircleColor = "#ee33ad";
-const stationCircleRadius = 6;
+const stationCircleRadius = 3;
 
-const dropletFadeOutTimeInSeconds = 10;
+const dropletLifetimeInSimulatedMinutes = 10;
 
 let dropletInitialColor: p5.Color;
 const dropletInitialRadius = 2;
@@ -63,11 +220,33 @@ const dropletFinalRadius = 44;
 /*
  * SKETCH STATE begin
  */
-const realTimeSecondsPerSimulatedMinute = 1 / simulationMinutesPerRealTimeSecond;
-let timeSinceLastSimulatedMinute = 0;
+// This can be modified when fast-forwarding or going backwards.
+let currentRealTimeSecondsPerSimulatedMinute = realTimeSecondsPerSimulatedMinute;
+let isFastForwarding = false;
+
+let availableRouteSnapshots: AllRoutesSnapshot[];
+let availableStationSnapshots: AllStationsSnapshot[];
+
+let selectedStationSnapshotIndex: number;
+let selectedStationSnapshot: AllStationsSnapshot;
+
+let rootAppElement: HTMLElement;
+let loadingHeadingElement: HTMLElement;
+let loadingDetailsElement: HTMLElement;
+
+let dateLabelElement: HTMLElement;
+let previousDayButtonElement: HTMLButtonElement;
+let nextDayButtonElement: HTMLButtonElement;
 
 let timeLabelHourElement: HTMLElement;
 let timeLabelMinuteElement: HTMLElement;
+
+let resetTimeButtonElement: HTMLButtonElement;
+let fastForwardTimeToggleElement: HTMLInputElement;
+
+let timeContainerElement: HTMLElement;
+
+let isSimulationPaused = false;
 
 let lastDrawTime: Date;
 
@@ -75,8 +254,8 @@ let map: IOIMap;
 let playback: BusArrivalPlayback;
 let activeDroplets: Droplet[] = [];
 
-let showStationsOptionCheckbox: HTMLInputElement;
-let showArrivalsOptionCheckbox: HTMLInputElement;
+let showStationsCheckboxElement: HTMLInputElement;
+let showArrivalsCheckboxElement: HTMLInputElement;
 /*
  * SKETCH STATE end
  */
@@ -106,35 +285,51 @@ function locationToCanvasPixel(
 function updateDroplets(
   timeDeltaSinceLastDraw: number,
 ) {
-    timeSinceLastSimulatedMinute += timeDeltaSinceLastDraw;
-
-    // Remove any finished droplets.
-    for (const droplet of activeDroplets) {
-        droplet.tickTime(timeDeltaSinceLastDraw);
-    }
-
-    activeDroplets = activeDroplets.filter(
-      droplet => !droplet.hasFinished()
+    const freshArrivalSets = playback.tick(
+      timeDeltaSinceLastDraw / currentRealTimeSecondsPerSimulatedMinute
     );
 
-    // We might need to do multiple steps if the rendering got stuck somewhere
-    // or if the framerate is not fast enough.
-    while (timeSinceLastSimulatedMinute >= realTimeSecondsPerSimulatedMinute) {
-        timeSinceLastSimulatedMinute -= realTimeSecondsPerSimulatedMinute;
+    const freshSimulatedTime = playback.currentDayTime;
+    timeLabelHourElement.innerText = String(Math.floor(freshSimulatedTime.hour)).padStart(2, "0");
+    timeLabelMinuteElement.innerText = String(Math.floor(freshSimulatedTime.minute)).padStart(2, "0");
 
-        const arrivalSet = playback.tickOneMinuteForward();
-        if (arrivalSet === null) {
-            continue;
-        }
-
-        timeLabelHourElement.innerText = String(arrivalSet.hour);
-        timeLabelMinuteElement.innerText = String(arrivalSet.minute);
+    for (const arrivalSet of freshArrivalSets) {
+        const arrivalTime = arrivalSet.time;
 
         for (const arrival of arrivalSet.arrivals) {
-            let droplet = new Droplet(arrival.location);
+            const droplet = new Droplet(arrivalTime, arrival.location);
             activeDroplets.push(droplet);
         }
     }
+
+    activeDroplets = activeDroplets.filter(
+      droplet => !droplet.hasFinished(freshSimulatedTime)
+    );
+}
+
+function getElementByIdOrThrow(elementId: string): HTMLElement {
+    let element = document.getElementById(elementId);
+    if (element === null) {
+        throw new ProjectError(`Could not find element with id ${elementId}!`);
+    }
+
+    return element;
+}
+
+function updateLoadingHeading(
+  content: string
+) {
+    loadingHeadingElement.innerText = content;
+}
+
+function updateLoadingDetails(
+  details: string
+) {
+    loadingDetailsElement.innerText = details;
+}
+
+function hideLoadingScreen() {
+    rootAppElement.classList.remove("not-ready");
 }
 
 /*
@@ -154,7 +349,7 @@ function drawStations(
 ) {
     p.fill(stationCircleColor);
 
-    for (const station of stations.stationDetails) {
+    for (const station of selectedStationSnapshot.stationDetails) {
         const stationPixelPosition = locationToCanvasPixel(
           station.location.leafletLatLng(),
           mapXOffset,
@@ -176,6 +371,7 @@ function drawStations(
 
 function drawDroplets(
   p: p5,
+  currentSimulationTime: TimeOfDay,
   mapXOffset: number,
   mapYOffset: number,
   mapPixelOrigin: Point,
@@ -184,7 +380,8 @@ function drawDroplets(
 
     for (let droplet of activeDroplets) {
         const transitionPercentage = clamp(
-          droplet.timeSinceStart / dropletFadeOutTimeInSeconds,
+          droplet.timeSinceInitialization(currentSimulationTime).getTotalMinutes()
+            / dropletLifetimeInSimulatedMinutes,
           0,
           1,
         );
@@ -222,54 +419,43 @@ const p5Sketch = (p: p5) => {
          */
 
         // @ts-ignore
-        dropletInitialColor = p.color("rgba(60,153,240,1)");
+        dropletInitialColor = p.color("rgba(17,158,211,0.95)");
         // @ts-ignore
-        dropletFinalColor = p.color("rgba(159,194,224,0)");
+        dropletFinalColor = p.color("rgba(210,230,243,0)");
 
         /*
          * SETUP-TIME CONFIGURATION end
          */
 
+        dateLabelElement = getElementByIdOrThrow("show-date-span");
+        timeLabelHourElement = getElementByIdOrThrow("show-time-hour-span");
+        timeLabelMinuteElement = getElementByIdOrThrow("show-time-minute-span");
 
-        const mapElement = document.getElementById("map");
-        if (mapElement === null) {
-            throw new ProjectError("Missing map element!");
-        }
-
-        showStationsOptionCheckbox =
-          document.getElementById("option-show-stations-input") as HTMLInputElement;
-        showArrivalsOptionCheckbox =
-          document.getElementById("option-show-arrivals-input") as HTMLInputElement;
+        showStationsCheckboxElement =
+          getElementByIdOrThrow("option-show-stations-input") as HTMLInputElement;
+        showArrivalsCheckboxElement =
+          getElementByIdOrThrow("option-show-arrivals-input") as HTMLInputElement;
 
         lastDrawTime = new Date();
 
-
-        let showTimeHour = document.getElementById("show-time-hour-span");
-        if (showTimeHour === null) {
-            throw new ProjectError("Missing hour span.");
-        }
-        timeLabelHourElement = showTimeHour;
-
-        let showTimeMinute = document.getElementById("show-time-minute-span");
-        if (showTimeMinute === null) {
-            throw new ProjectError("Missing minute span.");
-        }
-        timeLabelMinuteElement = showTimeMinute;
-
-
+        updateLoadingDetails("zemljevid");
+        const mapElement = getElementByIdOrThrow("map");
         map = new IOIMap(mapElement);
-        playback = new BusArrivalPlayback(stations);
 
+        updateLoadingHeading("Pripravljam");
+        updateLoadingDetails("čas prihodov");
+        selectStationSnapshot(0);
 
         const width = map.canvas.clientWidth;
         const height = map.canvas.clientHeight;
-
 
         p.createCanvas(width, height, map.canvas);
         p.frameRate(24);
 
         p.colorMode("rgb");
         p.smooth();
+
+        hideLoadingScreen();
     }
 
     p.draw = () => {
@@ -281,8 +467,8 @@ const p5Sketch = (p: p5) => {
         const drawTimeDelta = (currentTime - lastDrawTime) / 1000;
 
         // Parse user options.
-        const isShowStationsChecked = showStationsOptionCheckbox.checked;
-        const isShowArrivalsChecked = showArrivalsOptionCheckbox.checked;
+        const isShowStationsChecked = showStationsCheckboxElement.checked;
+        const isShowArrivalsChecked = showArrivalsCheckboxElement.checked;
 
         // Parse map-related stuff.
         const { top: mapXOffset, left: mapYOffset } = map.map.getContainer().getBoundingClientRect();
@@ -298,11 +484,16 @@ const p5Sketch = (p: p5) => {
             );
         }
 
-        updateDroplets(drawTimeDelta);
+        // If the simulation is paused, we can still draw the droplets,
+        // but we must not update (tick) them.
+        if (!isSimulationPaused) {
+            updateDroplets(drawTimeDelta);
+        }
 
         if (isShowArrivalsChecked) {
             drawDroplets(
               p,
+              playback.currentDayTime,
               mapXOffset,
               mapYOffset,
               pixelOrigin
@@ -313,11 +504,38 @@ const p5Sketch = (p: p5) => {
     }
 };
 
-const appElement = document.getElementById("app");
-if (appElement === null) {
-    log.error("#app element is missing from the page?!");
-    throw new Error("Invalid DOM.");
-}
+document.addEventListener("DOMContentLoaded", async function () {
+    rootAppElement = getElementByIdOrThrow("app");
 
-// noinspection JSPotentiallyInvalidConstructorUsage
-new p5(p5Sketch, appElement);
+    loadingHeadingElement = getElementByIdOrThrow("loading-heading-span");
+    loadingDetailsElement = getElementByIdOrThrow("loading-details-span");
+
+    previousDayButtonElement =
+      getElementByIdOrThrow("previous-day-button") as HTMLButtonElement;
+    nextDayButtonElement =
+      getElementByIdOrThrow("next-day-button") as HTMLButtonElement;
+    timeContainerElement = getElementByIdOrThrow("time-container");
+
+    resetTimeButtonElement =
+      getElementByIdOrThrow("reset-time-toggle") as HTMLButtonElement;
+    fastForwardTimeToggleElement =
+      getElementByIdOrThrow("fast-forward-time-toggle") as HTMLInputElement;
+
+    previousDayButtonElement.addEventListener("click", goToPreviousDay);
+    nextDayButtonElement.addEventListener("click", goToNextDay);
+    timeContainerElement.addEventListener("click", toggleSimulationPause);
+
+    resetTimeButtonElement.addEventListener("click", resetDay);
+    fastForwardTimeToggleElement.addEventListener("click", toggleFastForwardSimulation);
+
+    updateLoadingDetails("postaje");
+    availableStationSnapshots = await loadAllAvailableStationSnapshots();
+
+    updateLoadingDetails("avtobuse");
+    availableRouteSnapshots = await loadAllAvailableRouteSnapshots();
+
+    updateLoadingDetails("vizualizacijo");
+    // noinspection JSPotentiallyInvalidConstructorUsage
+    new p5(p5Sketch, rootAppElement);
+})
+

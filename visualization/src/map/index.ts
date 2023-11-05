@@ -1,6 +1,9 @@
 import Leaflet from "leaflet";
 import "leaflet-providers";
 import { CanvasV2 } from "./simpler-canvas.ts";
+import Secrets from "../secrets.ts";
+
+const jawgAccessToken = Secrets.jawgLabsSecret;
 
 export const DEFAULT_LEAFLET_MAP_OPTIONS: Leaflet.MapOptions = {
     attributionControl: true,
@@ -52,10 +55,12 @@ export default class IOIMap {
         this.map.attributionControl.setPrefix(false);
 
         this.tiles = Leaflet.tileLayer.provider(
-          "Stadia.AlidadeSmoothDark",
+          "Jawg.Dark",
+          // "Stadia.AlidadeSmoothDark",
           {
               ...DEFAULT_LEAFLET_TILE_OPTIONS,
-              ...options?.tileLayerOptions
+              ...options?.tileLayerOptions,
+              accessToken: jawgAccessToken,
           }
         );
         this.tiles.addTo(this.map);

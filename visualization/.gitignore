@@ -13,7 +13,12 @@
 #!.yarn/cache
 .pnp.*
 
-## IDEs
-.idea
 dist
 node_modules
+
+## IDEs
+.idea
+
+## Sensitive files
+src/secrets.ts
+!src/secrets.TEMPLATE.ts
