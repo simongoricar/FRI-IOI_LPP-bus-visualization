@@ -138,7 +138,7 @@ function selectStationSnapshot(snapshotIndex: number) {
     selectedStationSnapshotIndex = snapshotIndex;
     selectedStationSnapshot = snapshot;
 
-    playback = new BusArrivalPlayback(selectedStationSnapshot, initialSimulationTime);
+    playback = new BusArrivalPlayback(selectedStationSnapshot, initialSimulationTime.clone());
 
     // Reset draw state
     activeDroplets = [];
@@ -289,10 +289,6 @@ function updateDroplets(
       timeDeltaSinceLastDraw / currentRealTimeSecondsPerSimulatedMinute
     );
 
-    const freshSimulatedTime = playback.currentDayTime;
-    timeLabelHourElement.innerText = String(Math.floor(freshSimulatedTime.hour)).padStart(2, "0");
-    timeLabelMinuteElement.innerText = String(Math.floor(freshSimulatedTime.minute)).padStart(2, "0");
-
     for (const arrivalSet of freshArrivalSets) {
         const arrivalTime = arrivalSet.time;
 
@@ -303,7 +299,7 @@ function updateDroplets(
     }
 
     activeDroplets = activeDroplets.filter(
-      droplet => !droplet.hasFinished(freshSimulatedTime)
+      droplet => !droplet.hasFinished(playback.getTimeOfDay())
     );
 }
 
@@ -490,10 +486,14 @@ const p5Sketch = (p: p5) => {
             updateDroplets(drawTimeDelta);
         }
 
+        const freshSimulatedTime = playback.getTimeOfDay();
+        timeLabelHourElement.innerText = String(Math.floor(freshSimulatedTime.hour)).padStart(2, "0");
+        timeLabelMinuteElement.innerText = String(Math.floor(freshSimulatedTime.minute)).padStart(2, "0");
+
         if (isShowArrivalsChecked) {
             drawDroplets(
               p,
-              playback.currentDayTime,
+              playback.getTimeOfDay(),
               mapXOffset,
               mapYOffset,
               pixelOrigin

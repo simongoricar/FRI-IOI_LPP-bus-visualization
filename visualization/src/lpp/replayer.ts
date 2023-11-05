@@ -68,6 +68,10 @@ export class TimeOfDay {
           (this.hour - preceedingTime.hour) * 60 + (this.minute - preceedingTime.minute)
         );
     }
+
+    public clone(): TimeOfDay {
+        return new TimeOfDay(this.hour, this.minute);
+    }
 }
 
 export class BusArrival {

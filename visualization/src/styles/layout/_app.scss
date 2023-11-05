@@ -97,7 +97,12 @@
     pointer-events: auto;
 
     .previous-day-container, .next-day-container {
-      padding: 8px;
+      padding: 6px;
+      margin: 2px 12px;
+
+      button {
+        cursor: pointer;
+      }
     }
 
     .date {
@@ -129,6 +134,13 @@
     .reset-time-container label, .fast-forward-time-container label {
       input {
         display: none;
+      }
+    }
+
+
+    .reset-time-container {
+      button {
+        cursor: pointer;
       }
     }
 
@@ -197,6 +209,12 @@
           background-color: transparentize(lighten(vars.$color-background-dark, 0.6), 0.55);
           opacity: 1;
         }
+      }
+    }
+
+    .fast-forward-time-container {
+      label {
+        cursor: pointer;
       }
     }
   }
