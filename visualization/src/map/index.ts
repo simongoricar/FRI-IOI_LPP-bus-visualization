@@ -25,7 +25,8 @@ export const DEFAULT_LEAFLET_MAP_OPTIONS: Leaflet.MapOptions = {
 
 export const DEFAULT_LEAFLET_TILE_OPTIONS: Leaflet.TileLayerOptions = {
     maxZoom: 18,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    attribution: undefined,
+    // attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 };
 
 export type MapOptions = {

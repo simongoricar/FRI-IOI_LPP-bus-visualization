@@ -85,6 +85,33 @@ export class StationDetailsWithBusesAndTimetables {
 }
 
 
+function degreesToRadians(degrees: number): number {
+    return degrees * Math.PI / 180;
+}
+
+function haversineDistance(
+  firstLatitude: number,
+  firstLongitude: number,
+  secondLatitude: number,
+  secondLongitude: number
+): number {
+    // Adapted from
+    // https://stackoverflow.com/questions/365826/calculate-distance-between-2-gps-coordinates
+    const earthRadiusInKilometers = 6371;
+
+    const dLat = degreesToRadians(secondLatitude - firstLatitude);
+    const dLon = degreesToRadians(secondLongitude - firstLongitude);
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+      + Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        * Math.cos(degreesToRadians(firstLatitude))
+        * Math.cos(degreesToRadians(secondLatitude));
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return earthRadiusInKilometers * c;
+}
+
 export class GeographicalLocation {
     public latitude: number;
     public longitude: number;
@@ -110,6 +137,24 @@ export class GeographicalLocation {
 
     public clone(): GeographicalLocation {
         return new GeographicalLocation(this.latitude, this.longitude);
+    }
+
+    public distanceTo(other: GeographicalLocation): number {
+        return haversineDistance(
+          this.latitude,
+          this.longitude,
+          other.latitude,
+          other.longitude,
+        );
+    }
+
+    public distanceToLeafetLatLng(other: LatLng): number {
+        return haversineDistance(
+          this.latitude,
+          this.longitude,
+          other.lat,
+          other.lng,
+        );
     }
 }
 

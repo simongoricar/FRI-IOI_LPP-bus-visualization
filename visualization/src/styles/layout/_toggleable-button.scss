@@ -1,0 +1,76 @@
+@use "../vars" as vars;
+
+$button-size: 48px;
+$icon-size-inactive: 28px;
+$icon-size-active-scale: 1.18;
+$transition-time: .04s;
+
+.toggleable-button {
+  position: relative;
+  cursor: pointer;
+
+  width: $button-size;
+  height: $button-size;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+
+  input[type="checkbox"] {
+    visibility: hidden;
+    width: 0;
+    height: 0;
+  }
+
+  &__background {
+    z-index: 20;
+
+    position: absolute;
+    cursor: pointer;
+
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+
+    border-radius: 8px;
+
+    border-style: solid;
+    border-width: 2px;
+    border-color: transparent;
+    background-color: transparent;
+    box-shadow:  0 1px 6px 0 transparent;
+
+    transition: $transition-time ease;
+  }
+
+  svg {
+    width: $icon-size-inactive;
+    height: $icon-size-inactive;
+    z-index: 50;
+
+    stroke: vars.$colour-black;
+    transform: scale(1);
+    transform-origin: center;
+
+    transition: $transition-time ease;
+  }
+
+  &:hover &__background {
+    background-color: darken(vars.$colour-white, 14%);
+  }
+
+  input[type="checkbox"]:checked + &__background {
+    border-color: darken(vars.$colour-white, 56%);
+    background-color: darken(vars.$colour-white, 26%);
+    box-shadow: 0 1px 6px 0 transparentize(vars.$colour-black, 0.6);
+  }
+
+  input[type="checkbox"]:checked ~ svg {
+    stroke: vars.$colour-background-dark;
+    transform: scale($icon-size-active-scale);
+  }
+
+}

@@ -8,8 +8,13 @@ import { ProjectError } from "./core/errors.ts";
 import { loadRoutesSnapshot, loadStationsSnapshot } from "./lpp";
 import { BusArrivalPlayback, RelativeMinutes, TimeOfDay } from "./lpp/replayer.ts";
 import { LatLng, Point } from "leaflet";
-import { AllRoutesSnapshot, AllStationsSnapshot, GeographicalLocation } from "./lpp/models.ts";
+import {
+    AllRoutesSnapshot,
+    AllStationsSnapshot,
+    GeographicalLocation
+} from "./lpp/models.ts";
 import { clamp } from "./utilities.ts";
+import { StationSearcher } from "./lpp/stationSearcher.ts";
 
 const log = new Logger("main", Colour.LAUREL_GREEN);
 
@@ -32,15 +37,21 @@ class Droplet {
     }
 }
 
-const ALL_STATION_SNAPSHOTS = [
-  "station-details_2023-10-31_17-56-15.488+UTC.json",
-  "station-details_2023-11-05_19-11-53.567+UTC.json"
-];
+class StationPopup {
+    public popupAnchorLocation: LatLng;
+    public stationName: string;
+    public stationCode: string;
 
-const ALL_ROUTE_SNAPSHOTS = [
-  "route-details_2023-10-31_17-56-15.488+UTC.json",
-  "route-details_2023-11-05_19-11-53.567+UTC.json"
-];
+    constructor(
+      popupAnchorLocation: LatLng,
+      stationName: string,
+      stationCode: string,
+    ) {
+        this.popupAnchorLocation = popupAnchorLocation;
+        this.stationName = stationName;
+        this.stationCode = stationCode;
+    }
+}
 
 async function loadAllAvailableStationSnapshots(): Promise<AllStationsSnapshot[]> {
     let stationSnapshots: AllStationsSnapshot[] = [];
@@ -139,6 +150,7 @@ function selectStationSnapshot(snapshotIndex: number) {
     selectedStationSnapshot = snapshot;
 
     playback = new BusArrivalPlayback(selectedStationSnapshot, initialSimulationTime.clone());
+    stationSearcher = new StationSearcher(selectedStationSnapshot);
 
     // Reset draw state
     activeDroplets = [];
@@ -184,35 +196,145 @@ function resetDay() {
 function toggleFastForwardSimulation() {
     if (!isFastForwarding) {
         log.info("Fast-forwarding.");
-        currentRealTimeSecondsPerSimulatedMinute = realTimeSecondsPerSimulatedMinute / 6;
+        currentRealTimeSecondsPerSimulatedMinute = fastForwardedRealTimeSecondsPerSimulatedMinute;
         isFastForwarding = true;
+        fastForwardTimeToggleElement.checked = true;
     } else {
         log.info("Resetting simulation speed to normal.");
         currentRealTimeSecondsPerSimulatedMinute = realTimeSecondsPerSimulatedMinute;
         isFastForwarding = false;
+        fastForwardTimeToggleElement.checked = false;
+    }
+}
+
+function handleCanvasClick(event: MouseEvent) {
+    const { top: mapXOffset, left: mapYOffset } = map.map.getContainer().getBoundingClientRect();
+    const pixelOrigin = map.map.getPixelOrigin();
+
+    const mouseClickPoint = new Point(event.offsetX, event.offsetY);
+    const latLngOfClick = canvasPixelToLocation(
+      mouseClickPoint,
+      mapXOffset,
+      mapYOffset,
+      pixelOrigin,
+    );
+
+    log.debug(`Mouse clicked at ${event.offsetX}, ${event.offsetY}, which is at ${latLngOfClick.lat}, ${latLngOfClick.lng}`);
+
+    const closestStationData = stationSearcher.getClosestStation(latLngOfClick);
+
+    if (closestStationData === null) {
+        log.debug("User did not click near any station!?");
+        stationPopup = null;
+        return;
+    }
+
+    const [_, closestStation] = closestStationData;
+
+    // Project the station location back to pixels, so we can measure how far off
+    // the user clicked.
+    const closestStationPixelLocation = locationToCanvasPixel(
+      new LatLng(closestStation.location.latitude, closestStation.location.longitude),
+      mapXOffset,
+      mapYOffset,
+      pixelOrigin,
+    );
+
+    const pixelClickDistance = closestStationPixelLocation.distanceTo(mouseClickPoint);
+    if (pixelClickDistance > stationClickDistanceToleranceInPixels) {
+        log.debug("User did click, but was too far off.");
+        stationPopup = null;
+        return;
+    }
+
+    log.info(
+      `User clicked near a station, will display popup: ${closestStation.name} (${closestStation.stationCode}).`
+    );
+
+    stationPopup = new StationPopup(
+      closestStation.location.leafletLatLng(),
+      closestStation.name,
+      closestStation.stationCode,
+    )
+}
+
+function handleKeyboardInput(event: KeyboardEvent) {
+    if (event.key === "c") {
+        log.info("User pressed 'c', closing station popup.");
+        stationPopup = null;
+    } else if (event.key === "p") {
+        log.info("User pressed 'p', pausing/un-pausing simulation.");
+        toggleSimulationPause();
+    } else if (event.key === "f") {
+        log.info("User pressed 'f', fast-forwarding/resetting simulation speed.");
+        toggleFastForwardSimulation();
+    } else if (event.key === "s") {
+        log.info("User pressed 's', toggling 'show stations' option.");
+        showStationsCheckboxElement.checked = !showStationsCheckboxElement.checked;
+    } else if (event.key === "a") {
+        log.info("User pressed 'a', toggling 'show arrivals' option.");
+        showArrivalsCheckboxElement.checked = !showArrivalsCheckboxElement.checked;
+    } else if (event.key === "r") {
+        log.info("User pressed 'r', resetting day.");
+        resetDay();
+    } else if (event.key === "n") {
+        log.info("User pressed 'n', loading next day.");
+        goToNextDay();
+    } else if (event.key === "b") {
+        log.info("User pressed 'b', loading previous day.");
+        goToPreviousDay();
     }
 }
 
 /*
  * SKETCH CONFIGURATION begin
  */
+const ALL_STATION_SNAPSHOTS = [
+    "station-details_2023-10-31_17-56-15.488+UTC.json",
+    "station-details_2023-11-05_19-11-53.567+UTC.json",
+    "station-details_2023-11-06_18-50-22.095+UTC.json"
+];
 
-const simulationMinutesPerRealTimeSecond = 3;
+const ALL_ROUTE_SNAPSHOTS = [
+    "route-details_2023-10-31_17-56-15.488+UTC.json",
+    "route-details_2023-11-05_19-11-53.567+UTC.json",
+    "route-details_2023-11-06_18-50-22.095+UTC.json"
+];
+
+// (used to be 3.0)
+const simulationMinutesPerRealTimeSecond = 2.6;
+const fastForwardedSimulationMinutesPerRealTimeSecond = simulationMinutesPerRealTimeSecond * 8;
+
 const realTimeSecondsPerSimulatedMinute = 1 / simulationMinutesPerRealTimeSecond;
+const fastForwardedRealTimeSecondsPerSimulatedMinute = 1 / fastForwardedSimulationMinutesPerRealTimeSecond;
 
-const initialSimulationTime = new TimeOfDay(4, 40);
+const initialSimulationTime = new TimeOfDay(3, 30);
 
+const stationClickDistanceToleranceInPixels = 30;
 
 const stationCircleColor = "#ee33ad";
 const stationCircleRadius = 3;
 
-const dropletLifetimeInSimulatedMinutes = 10;
+const dropletLifetimeInSimulatedMinutes = 5.5;
 
 let dropletInitialColor: p5.Color;
 const dropletInitialRadius = 2;
 
 let dropletFinalColor: p5.Color;
-const dropletFinalRadius = 44;
+const dropletFinalRadius = 26;
+
+const stationPopupFontSize = 16;
+
+const stationPopupXOffset = 0;
+const stationPopupYOffset = -28;
+
+const stationPopupTextPadding = 8;
+const stationPopupTextOnlyYOffset = 2;
+
+const stationPopupRectRoundedBorders = 4;
+
+let stationPopupTextColor: p5.Color;
+let stationPopupBackgroundColor: p5.Color;
 /*
  * SKETCH CONFIGURATION end
  */
@@ -250,9 +372,14 @@ let isSimulationPaused = false;
 
 let lastDrawTime: Date;
 
+let font: p5.Font;
+
 let map: IOIMap;
 let playback: BusArrivalPlayback;
+let stationSearcher: StationSearcher;
+
 let activeDroplets: Droplet[] = [];
+let stationPopup: StationPopup | null = null;
 
 let showStationsCheckboxElement: HTMLInputElement;
 let showArrivalsCheckboxElement: HTMLInputElement;
@@ -269,7 +396,7 @@ function locationToCanvasPixel(
   mapXOffset: number,
   mapYOffset: number,
   mapPixelOrigin: Point,
-) {
+): Point {
     let pixelLocation = map.map.project(
       location,
       map.map.getZoom()
@@ -280,6 +407,22 @@ function locationToCanvasPixel(
     pixelLocation.y += mapYOffset;
 
     return pixelLocation;
+}
+
+function canvasPixelToLocation(
+  pixel: Point,
+  mapXOffset: number,
+  mapYOffset: number,
+  mapPixelOrigin: Point,
+): LatLng {
+    let pixelCloned = pixel.clone();
+    pixelCloned.x += mapXOffset;
+    pixelCloned.y += mapYOffset;
+
+    return map.map.unproject(
+      pixel.add(mapPixelOrigin),
+      map.map.getZoom(),
+    );
 }
 
 function updateDroplets(
@@ -343,6 +486,7 @@ function drawStations(
   mapYOffset: number,
   mapPixelOrigin: Point,
 ) {
+    p.strokeWeight(0);
     p.fill(stationCircleColor);
 
     for (const station of selectedStationSnapshot.stationDetails) {
@@ -401,6 +545,61 @@ function drawDroplets(
     }
 }
 
+function drawStationPopup(
+  p: p5,
+  mapXOffset: number,
+  mapYOffset: number,
+  mapPixelOrigin: Point,
+) {
+    if (stationPopup === null) {
+        return;
+    }
+
+    const popupOrigin = locationToCanvasPixel(
+      stationPopup.popupAnchorLocation,
+      mapXOffset,
+      mapYOffset,
+      mapPixelOrigin
+    );
+
+    const popupText = `${stationPopup.stationName} (${stationPopup.stationCode})`;
+    const popupTextXPosition = popupOrigin.x + stationPopupXOffset;
+    const popupTextYPosition = popupOrigin.y + stationPopupYOffset;
+
+    p.textAlign("center", "center");
+    p.textSize(stationPopupFontSize);
+    p.textFont(font);
+
+    const textBoundingBox = font.textBounds(
+      popupText,
+      popupTextXPosition,
+      popupTextYPosition + stationPopupTextOnlyYOffset
+    );
+    // @ts-ignore
+    const { w: textWidth, h: textHeight } = textBoundingBox;
+
+
+    p.fill(stationPopupBackgroundColor);
+    p.rectMode("center");
+    p.rect(
+      popupTextXPosition,
+      popupTextYPosition + stationPopupTextOnlyYOffset,
+      textWidth + 2 * stationPopupTextPadding,
+      textHeight + 2 * stationPopupTextPadding,
+      stationPopupRectRoundedBorders
+    );
+
+
+    p.fill(stationPopupTextColor);
+    p.text(
+      popupText,
+      popupTextXPosition,
+      popupTextYPosition
+    );
+
+    // TODO
+}
+
 /*
  * SKETCH DRAW FUNCTIONS end
  */
@@ -415,9 +614,14 @@ const p5Sketch = (p: p5) => {
          */
 
         // @ts-ignore
-        dropletInitialColor = p.color("rgba(17,158,211,0.95)");
+        dropletInitialColor = p.color("rgba(17, 158, 211, 0.95)");
         // @ts-ignore
-        dropletFinalColor = p.color("rgba(210,230,243,0)");
+        dropletFinalColor = p.color("rgba(210, 230, 243, 0)");
+
+        // @ts-ignore
+        stationPopupTextColor = p.color("rgb(31,31,31)");
+        // @ts-ignore
+        stationPopupBackgroundColor = p.color("rgb(255, 255, 255)");
 
         /*
          * SETUP-TIME CONFIGURATION end
@@ -445,11 +649,15 @@ const p5Sketch = (p: p5) => {
         const width = map.canvas.clientWidth;
         const height = map.canvas.clientHeight;
 
+        font = p.loadFont("./fonts/Roboto/Roboto-Regular.ttf");
+
         p.createCanvas(width, height, map.canvas);
         p.frameRate(24);
 
         p.colorMode("rgb");
         p.smooth();
+
+        map.canvas.addEventListener("click", handleCanvasClick);
 
         hideLoadingScreen();
     }
@@ -500,12 +708,21 @@ const p5Sketch = (p: p5) => {
             );
         }
 
+        drawStationPopup(
+          p,
+          mapXOffset,
+          mapYOffset,
+          pixelOrigin
+        );
+
         lastDrawTime = currentTime;
     }
 };
 
 document.addEventListener("DOMContentLoaded", async function () {
     rootAppElement = getElementByIdOrThrow("app");
+
+    document.body.addEventListener("keydown", handleKeyboardInput);
 
     loadingHeadingElement = getElementByIdOrThrow("loading-heading-span");
     loadingDetailsElement = getElementByIdOrThrow("loading-details-span");

@@ -23,7 +23,7 @@
 
           <span class="show-date">
             <span class="previous-day-container">
-              <button id="previous-day-button">
+              <button class="button" id="previous-day-button" title="Naloži predhodni dan (bližnjica: B)">
                 <!-- chevrons-left.svg -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -33,7 +33,7 @@
             </span>
             <span class="date" id="show-date-span">05. 11. 2023 (nedelja)</span>
             <span class="next-day-container">
-              <button id="next-day-button">
+              <button class="button" id="next-day-button" title="Naloži naslednji dan (bližnjica: N)">
                 <!-- chevrons-right.svg -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -47,7 +47,7 @@
           <span class="show-time">
 
             <span class="reset-time-container">
-              <button id="reset-time-toggle">
+              <button class="button" id="reset-time-toggle" title="Ponastavi dan (bližnjica: R)">
                 <!-- sunrise.svg -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -64,7 +64,7 @@
               <span class="colon">:</span>
               <span class="minute" id="show-time-minute-span">5</span>
 
-              <span class="time-paused-indicator-container">
+              <span class="time-paused-indicator-container" title="Ustavi simulacijo (bližnjica: P)">
                 <span class="time-paused-indicator">
                   <!-- pause.svg -->
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -77,8 +77,9 @@
             </span>
 
             <span class="fast-forward-time-container">
-              <label>
+              <label class="toggleable-button" title="Pospeši hitrost simulacije (bližnjica: F)">
                 <input type="checkbox" id="fast-forward-time-toggle">
+                <span class="toggleable-button__background"></span>
                 <!-- fast-forward.svg -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -96,7 +97,7 @@
       <div class="options-bar">
 
         <span class="option-show-stations">
-            <span class="option-description">
+            <span class="option-description" title="Bližnjica: S">
               Prikaži postaje
               <span id="show-stations-demo-circle"></span>
             </span>
@@ -109,7 +110,7 @@
         <span class="options-vertical-spacer"></span>
 
         <span class="option-show-droplets">
-          <span class="option-description">
+          <span class="option-description" title="Bližnjica: A">
             Prikaži prihode
             <span id="show-arrivals-demo-circle"></span>
           </span>
