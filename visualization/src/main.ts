@@ -305,9 +305,6 @@ const ALL_ROUTE_SNAPSHOTS = [
 const simulationMinutesPerRealTimeSecond = 2.6;
 const fastForwardedSimulationMinutesPerRealTimeSecond = simulationMinutesPerRealTimeSecond * 8;
 
-const realTimeSecondsPerSimulatedMinute = 1 / simulationMinutesPerRealTimeSecond;
-const fastForwardedRealTimeSecondsPerSimulatedMinute = 1 / fastForwardedSimulationMinutesPerRealTimeSecond;
-
 const initialSimulationTime = new TimeOfDay(3, 30);
 
 const stationClickDistanceToleranceInPixels = 30;
@@ -332,6 +329,8 @@ const stationPopupTextPadding = 8;
 const stationPopupTextOnlyYOffset = 2;
 
 const stationPopupRectRoundedBorders = 4;
+const stationPopupTriangleCenterOffset = 14;
+const stationPopupTriangleYOffset = -3;
 
 let stationPopupTextColor: p5.Color;
 let stationPopupBackgroundColor: p5.Color;
@@ -342,7 +341,10 @@ let stationPopupBackgroundColor: p5.Color;
 /*
  * SKETCH STATE begin
  */
-// This can be modified when fast-forwarding or going backwards.
+const realTimeSecondsPerSimulatedMinute = 1 / simulationMinutesPerRealTimeSecond;
+const fastForwardedRealTimeSecondsPerSimulatedMinute = 1 / fastForwardedSimulationMinutesPerRealTimeSecond;
+
+// This is modified when fast-forwarding.
 let currentRealTimeSecondsPerSimulatedMinute = realTimeSecondsPerSimulatedMinute;
 let isFastForwarding = false;
 
@@ -588,6 +590,20 @@ function drawStationPopup(
       textHeight + 2 * stationPopupTextPadding,
       stationPopupRectRoundedBorders
     );
+
+    const triangleTopXCenter = popupTextXPosition;
+    const triangleTopY = popupTextYPosition + stationPopupTextPadding;
+    const triangleBottomTipX = popupOrigin.x;
+    const triangleBottomTipY = popupOrigin.y + stationPopupTriangleYOffset;
+
+    p.triangle(
+      triangleTopXCenter - stationPopupTriangleCenterOffset,
+      triangleTopY,
+      triangleTopXCenter + stationPopupTriangleCenterOffset,
+      triangleTopY,
+      triangleBottomTipX,
+      triangleBottomTipY,
+    )
 
 
     p.fill(stationPopupTextColor);

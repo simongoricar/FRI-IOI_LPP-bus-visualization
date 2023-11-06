@@ -40,6 +40,7 @@ export const CanvasV2 = Leaflet.Layer.extend({
         const mapContainerHeight = mapContainer.offsetHeight;
 
         const canvasElement = Leaflet.DomUtil.create("canvas");
+        canvasElement.classList.add("p5js-canvas");
 
         canvasElement.style.height = `${mapContainerHeight}px`;
         canvasElement.style.width = `${mapContainerWidth}px`;
