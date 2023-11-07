@@ -9,7 +9,8 @@ The steps are as follows:
 
 - Copy `preparation/data/configuration.TEMPLATE.toml` to `preparation/data/configuration.toml` and fill out any required fields.
 - Build the project in release mode: run `cargo build --release` inside the `preparation` directory.
-- To download data for the current day, run `cargo run --release -- --run-mode once` and wait for completion. This might take around half an hour.
+- To download data for the current day, run `cargo run --release -- --run-mode once` and wait for completion. This might take around half an hour or 
+  maybe up to an hour - you can monitor the current progress by looking at the `current_station` and `total_stations` fields in the logs.
   For any other available options, see `cargo run --release -- --help`. At the very end you may see quite a few "errors" in the console - this is 
   normal, the program just displays warning and/or errors when encountering abandoned or invalid bus lines and stations.
   They will simply be filtered out of the output files.
