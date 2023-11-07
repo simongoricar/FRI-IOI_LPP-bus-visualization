@@ -310,35 +310,35 @@ const ALL_ROUTE_SNAPSHOTS = [
 ];
 
 // (used to be 3.0)
-const simulationMinutesPerRealTimeSecond = 2.6;
+const simulationMinutesPerRealTimeSecond = 2.7;
 const fastForwardedSimulationMinutesPerRealTimeSecond = simulationMinutesPerRealTimeSecond * 8;
 
 const initialSimulationTime = new TimeOfDay(3, 30);
 
-const stationClickDistanceToleranceInPixels = 30;
+const stationClickDistanceToleranceInPixels = 24;
 
 const stationCircleColor = "#ee33ad";
-const stationCircleRadius = 4;
+const stationCircleRadius = 5;
 
-const dropletLifetimeInSimulatedMinutes = 5.5;
+const dropletLifetimeInSimulatedMinutes = 5.8;
 
 let dropletInitialColor: p5.Color;
 const dropletInitialRadius = 2;
 
 let dropletFinalColor: p5.Color;
-const dropletFinalRadius = 26;
+const dropletFinalRadius = 28;
 
-const stationPopupFontSize = 16;
+const stationPopupFontSize = 17;
 
 const stationPopupXOffset = 0;
-const stationPopupYOffset = -28;
+const stationPopupYOffset = -34;
 
-const stationPopupTextPadding = 8;
+const stationPopupTextPadding = 10;
 const stationPopupTextOnlyYOffset = 2;
 
-const stationPopupRectRoundedBorders = 4;
-const stationPopupTriangleCenterOffset = 14;
-const stationPopupTriangleYOffset = -3;
+const stationPopupRectRoundedBorders = 5;
+const stationPopupTriangleCenterOffset = 18;
+const stationPopupTriangleYOffset = -4;
 
 let stationPopupTextColor: p5.Color;
 let stationPopupBackgroundColor: p5.Color;

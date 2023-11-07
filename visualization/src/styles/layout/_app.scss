@@ -3,6 +3,7 @@
 #app {
   width: 100vw;
   height: 100vh;
+  user-select: none;
 
   font-family: vars.$font-family-native;
 
