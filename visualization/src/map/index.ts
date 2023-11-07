@@ -9,18 +9,19 @@ export const DEFAULT_LEAFLET_MAP_OPTIONS: Leaflet.MapOptions = {
     attributionControl: true,
     zoomControl: false,
     center: Leaflet.latLng(46.057838, 14.509823),
-    zoom: 13.5,
-    maxZoom: 18,
-    minZoom: 13,
+    zoom: 13,
+    maxZoom: 16,
+    minZoom: 13.5,
     zoomSnap: 0.5,
     zoomDelta: 0.5,
     inertia: false,
     wheelPxPerZoomLevel: 90,
+    keyboard: false,
     maxBounds: Leaflet.latLngBounds(
       Leaflet.latLng(46.088995, 14.435850),
       Leaflet.latLng(46.009894, 14.588667)
     ),
-    renderer: Leaflet.canvas(),
+    // renderer: Leaflet.canvas(),
 };
 
 export const DEFAULT_LEAFLET_TILE_OPTIONS: Leaflet.TileLayerOptions = {

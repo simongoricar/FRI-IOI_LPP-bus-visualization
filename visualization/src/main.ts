@@ -208,6 +208,10 @@ function toggleFastForwardSimulation() {
 }
 
 function handleCanvasClick(event: MouseEvent) {
+    if (!showStationsCheckboxElement.checked) {
+        return;
+    }
+
     const { top: mapXOffset, left: mapYOffset } = map.map.getContainer().getBoundingClientRect();
     const pixelOrigin = map.map.getPixelOrigin();
 
@@ -262,8 +266,8 @@ function handleKeyboardInput(event: KeyboardEvent) {
     if (event.key === "c") {
         log.info("User pressed 'c', closing station popup.");
         stationPopup = null;
-    } else if (event.key === "p") {
-        log.info("User pressed 'p', pausing/un-pausing simulation.");
+    } else if (event.key === "p" || event.key === " ") {
+        log.info("User pressed 'p'/space, pausing/un-pausing simulation.");
         toggleSimulationPause();
     } else if (event.key === "f") {
         log.info("User pressed 'f', fast-forwarding/resetting simulation speed.");
@@ -271,6 +275,10 @@ function handleKeyboardInput(event: KeyboardEvent) {
     } else if (event.key === "s") {
         log.info("User pressed 's', toggling 'show stations' option.");
         showStationsCheckboxElement.checked = !showStationsCheckboxElement.checked;
+
+        if (!showStationsCheckboxElement.checked) {
+            stationPopup = null;
+        }
     } else if (event.key === "a") {
         log.info("User pressed 'a', toggling 'show arrivals' option.");
         showArrivalsCheckboxElement.checked = !showArrivalsCheckboxElement.checked;
@@ -310,7 +318,7 @@ const initialSimulationTime = new TimeOfDay(3, 30);
 const stationClickDistanceToleranceInPixels = 30;
 
 const stationCircleColor = "#ee33ad";
-const stationCircleRadius = 3;
+const stationCircleRadius = 4;
 
 const dropletLifetimeInSimulatedMinutes = 5.5;
 
@@ -581,15 +589,8 @@ function drawStationPopup(
     const { w: textWidth, h: textHeight } = textBoundingBox;
 
 
+    p.strokeWeight(0);
     p.fill(stationPopupBackgroundColor);
-    p.rectMode("center");
-    p.rect(
-      popupTextXPosition,
-      popupTextYPosition + stationPopupTextOnlyYOffset,
-      textWidth + 2 * stationPopupTextPadding,
-      textHeight + 2 * stationPopupTextPadding,
-      stationPopupRectRoundedBorders
-    );
 
     const triangleTopXCenter = popupTextXPosition;
     const triangleTopY = popupTextYPosition + stationPopupTextPadding;
@@ -605,6 +606,15 @@ function drawStationPopup(
       triangleBottomTipY,
     )
 
+    p.rectMode("center");
+    p.rect(
+      popupTextXPosition,
+      popupTextYPosition + stationPopupTextOnlyYOffset,
+      textWidth + 2 * stationPopupTextPadding,
+      textHeight + 2 * stationPopupTextPadding,
+      stationPopupRectRoundedBorders
+    );
+
 
     p.fill(stationPopupTextColor);
     p.text(
@@ -612,8 +622,6 @@ function drawStationPopup(
       popupTextXPosition,
       popupTextYPosition
     );
-
-    // TODO
 }
 
 /*
@@ -702,6 +710,13 @@ const p5Sketch = (p: p5) => {
               mapYOffset,
               pixelOrigin
             );
+
+            drawStationPopup(
+              p,
+              mapXOffset,
+              mapYOffset,
+              pixelOrigin
+            );
         }
 
         // If the simulation is paused, we can still draw the droplets,
@@ -723,13 +738,6 @@ const p5Sketch = (p: p5) => {
               pixelOrigin
             );
         }
-
-        drawStationPopup(
-          p,
-          mapXOffset,
-          mapYOffset,
-          pixelOrigin
-        );
 
         lastDrawTime = currentTime;
     }
