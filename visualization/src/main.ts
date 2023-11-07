@@ -14,9 +14,9 @@ import {
     GeographicalLocation
 } from "./lpp/models.ts";
 import { clamp } from "./utilities.ts";
+import Data from "./data.ts";
 import { StationSearcher } from "./lpp/stationSearcher.ts";
 
-const log = new Logger("main", Colour.LAUREL_GREEN);
 
 class Droplet {
     public initializationTime: TimeOfDay;
@@ -57,9 +57,9 @@ async function loadAllAvailableStationSnapshots(): Promise<AllStationsSnapshot[]
     let stationSnapshots: AllStationsSnapshot[] = [];
 
     let currentSnapshotIndex = 0;
-    const totalSnapshots = ALL_STATION_SNAPSHOTS.length;
+    const totalSnapshots = Data.allStationSnapshots.length;
 
-    for (const stationSnapshotFilename of ALL_STATION_SNAPSHOTS) {
+    for (const stationSnapshotFilename of Data.allStationSnapshots) {
         updateLoadingDetails(`postaje (${currentSnapshotIndex + 1}/${totalSnapshots})`);
 
         const snapshot = await loadStationsSnapshot(stationSnapshotFilename);
@@ -81,9 +81,9 @@ async function loadAllAvailableRouteSnapshots(): Promise<AllRoutesSnapshot[]> {
     let routeSnapshots: AllRoutesSnapshot[] = [];
 
     let currentSnapshotIndex = 0;
-    const totalSnapshots = ALL_ROUTE_SNAPSHOTS.length;
+    const totalSnapshots = Data.allRouteSnapshots.length;
 
-    for (const routeSnapshotFilename of ALL_ROUTE_SNAPSHOTS) {
+    for (const routeSnapshotFilename of Data.allRouteSnapshots) {
         updateLoadingDetails(`avtobuse (${currentSnapshotIndex + 1}/${totalSnapshots})`);
 
         const snapshot = await loadRoutesSnapshot(routeSnapshotFilename);
@@ -229,7 +229,7 @@ function handleCanvasClick(event: MouseEvent) {
 
     if (closestStationData === null) {
         log.debug("User did not click near any station!?");
-        stationPopup = null;
+        currentStationPopup = null;
         return;
     }
 
@@ -247,7 +247,7 @@ function handleCanvasClick(event: MouseEvent) {
     const pixelClickDistance = closestStationPixelLocation.distanceTo(mouseClickPoint);
     if (pixelClickDistance > stationClickDistanceToleranceInPixels) {
         log.debug("User did click, but was too far off.");
-        stationPopup = null;
+        currentStationPopup = null;
         return;
     }
 
@@ -255,7 +255,7 @@ function handleCanvasClick(event: MouseEvent) {
       `User clicked near a station, will display popup: ${closestStation.name} (${closestStation.stationCode}).`
     );
 
-    stationPopup = new StationPopup(
+    currentStationPopup = new StationPopup(
       closestStation.location.leafletLatLng(),
       closestStation.name,
       closestStation.stationCode,
@@ -265,7 +265,7 @@ function handleCanvasClick(event: MouseEvent) {
 function handleKeyboardInput(event: KeyboardEvent) {
     if (event.key === "c") {
         log.info("User pressed 'c', closing station popup.");
-        stationPopup = null;
+        currentStationPopup = null;
     } else if (event.key === "p" || event.key === " ") {
         log.info("User pressed 'p'/space, pausing/un-pausing simulation.");
         toggleSimulationPause();
@@ -277,7 +277,7 @@ function handleKeyboardInput(event: KeyboardEvent) {
         showStationsCheckboxElement.checked = !showStationsCheckboxElement.checked;
 
         if (!showStationsCheckboxElement.checked) {
-            stationPopup = null;
+            currentStationPopup = null;
         }
     } else if (event.key === "a") {
         log.info("User pressed 'a', toggling 'show arrivals' option.");
@@ -294,22 +294,12 @@ function handleKeyboardInput(event: KeyboardEvent) {
     }
 }
 
+
 /*
  * SKETCH CONFIGURATION begin
  */
-const ALL_STATION_SNAPSHOTS = [
-    "station-details_2023-10-31_17-56-15.488+UTC.json",
-    "station-details_2023-11-05_19-11-53.567+UTC.json",
-    "station-details_2023-11-06_18-50-22.095+UTC.json"
-];
+const log = new Logger("main", Colour.LAUREL_GREEN);
 
-const ALL_ROUTE_SNAPSHOTS = [
-    "route-details_2023-10-31_17-56-15.488+UTC.json",
-    "route-details_2023-11-05_19-11-53.567+UTC.json",
-    "route-details_2023-11-06_18-50-22.095+UTC.json"
-];
-
-// (used to be 3.0)
 const simulationMinutesPerRealTimeSecond = 2.7;
 const fastForwardedSimulationMinutesPerRealTimeSecond = simulationMinutesPerRealTimeSecond * 8;
 
@@ -345,6 +335,7 @@ let stationPopupBackgroundColor: p5.Color;
 /*
  * SKETCH CONFIGURATION end
  */
+
 
 /*
  * SKETCH STATE begin
@@ -389,13 +380,14 @@ let playback: BusArrivalPlayback;
 let stationSearcher: StationSearcher;
 
 let activeDroplets: Droplet[] = [];
-let stationPopup: StationPopup | null = null;
+let currentStationPopup: StationPopup | null = null;
 
 let showStationsCheckboxElement: HTMLInputElement;
 let showArrivalsCheckboxElement: HTMLInputElement;
 /*
  * SKETCH STATE end
  */
+
 
 /*
  * SKETCH DRAW UTILITIES begin
@@ -561,18 +553,18 @@ function drawStationPopup(
   mapYOffset: number,
   mapPixelOrigin: Point,
 ) {
-    if (stationPopup === null) {
+    if (currentStationPopup === null) {
         return;
     }
 
     const popupOrigin = locationToCanvasPixel(
-      stationPopup.popupAnchorLocation,
+      currentStationPopup.popupAnchorLocation,
       mapXOffset,
       mapYOffset,
       mapPixelOrigin
     );
 
-    const popupText = `${stationPopup.stationName} (${stationPopup.stationCode})`;
+    const popupText = `${currentStationPopup.stationName} (${currentStationPopup.stationCode})`;
     const popupTextXPosition = popupOrigin.x + stationPopupXOffset;
     const popupTextYPosition = popupOrigin.y + stationPopupYOffset;
 
@@ -778,7 +770,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     availableRouteSnapshots = await loadAllAvailableRouteSnapshots();
 
     updateLoadingDetails("vizualizacijo");
+
     // noinspection JSPotentiallyInvalidConstructorUsage
     new p5(p5Sketch, rootAppElement);
-})
-
+});
