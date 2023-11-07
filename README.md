@@ -12,7 +12,8 @@ The steps are as follows:
 - To download data for the current day, run `cargo run --release -- --run-mode once` and wait for completion. This might take around half an hour.
   For any other available options, see `cargo run --release -- --help`. At the very end you may see quite a few "errors" in the console - this is 
   normal, the program just displays warning and/or errors when encountering abandoned or invalid bus lines and stations.
-- After the program exits successfully, you'll find the "recordings" in the configured output directory. 
+  They will simply be filtered out of the output files.
+- After the program exits successfully, you'll find the "recordings" in the configured output directory.
   Copy the `route-details-*` and `station-details-*` bare files to `visualization/public/data` (create the directory if needed).
 
 ### 1.2 Download required assets
