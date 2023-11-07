@@ -1,4 +1,19 @@
 # LPP Bus visualisation
+![Rust MSRV is 1.70.0](https://img.shields.io/badge/Rust_MSRV-1.70.0-green)
+![Work is licensed under the GNU GPL v3 license](https://img.shields.io/badge/license-GPLv3-orange)
+
+
+This is a data visualization project about bus arrivals in Ljubljana (LPP).
+It was developed as seminar work as part of a computer science course on 
+[data design and interactivity](https://www.fri.uni-lj.si/sl/predmet/63527).
+
+<img
+  alt="Visualization demonstration GIF"
+  src="https://raw.githubusercontent.com/DefaultSimon/LPP-bus-visualization/master/assets/lpp-bus-viszalization-demo-v9.gif" 
+  width="100%" height="auto"
+/>
+
+---
 
 ## 1. Preparation
 ### 1.1 Requesting daily timetables and other LPP data
@@ -17,9 +32,10 @@ The steps are as follows:
 - After the program exits successfully, you'll find the "recordings" in the configured output directory.
   Copy the `route-details-*` and `station-details-*` bare files to `visualization/public/data` (create the directory if needed).
 
-### 1.2 Download required assets
-Download the Roboto font from [here](https://fonts.google.com/specimen/Roboto) into the `visualization/public/fonts/Roboto` directory 
-(the file `visualization/public/fonts/Roboto/Roboto-Regular.ttf` should now exist, among others).
+### 1.2 Download other required assets
+Download the Roboto font family from [here](https://fonts.google.com/specimen/Roboto) and extract the files 
+into the `visualization/public/fonts/Roboto` directory. 
+The file `visualization/public/fonts/Roboto/Roboto-Regular.ttf`, among other variants, should now exist.
 
 ### 1.3 Configure the available data files and map API keys
 Inside the `visualization/src` directory, copy the `data.TEMPLATE.ts` to `data.ts` and fill out the filenames of the available 
@@ -37,4 +53,5 @@ The steps are as follows:
 - In `visualization`: run `yarn install`
 - In `visualization`: run `yarn build` (or `yarn dev` if you want to develop with hot reloading).
 
-**If you built the project properly, you'll find the required files inside the `visualization/dist` directory. You're done!**
+**If you built the project properly, you'll find all the required files inside the `visualization/dist` directory. 
+You're done; you need to serve only these files.**
