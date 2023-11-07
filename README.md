@@ -15,7 +15,7 @@ It was developed as seminar work as part of a computer science course on
 
 ---
 
-## 1. Preparation
+## 1. How to deploy
 ### 1.1 Requesting daily timetables and other LPP data
 Before you can use the visualisation, you need to request some timetable and station data from the LPP API.
 To do this, you need to run the "recording" server inside `preparation`. You'll need [Rust](https://www.rust-lang.org/) for this.
