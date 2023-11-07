@@ -710,13 +710,6 @@ const p5Sketch = (p: p5) => {
               mapYOffset,
               pixelOrigin
             );
-
-            drawStationPopup(
-              p,
-              mapXOffset,
-              mapYOffset,
-              pixelOrigin
-            );
         }
 
         // If the simulation is paused, we can still draw the droplets,
@@ -733,6 +726,15 @@ const p5Sketch = (p: p5) => {
             drawDroplets(
               p,
               playback.getTimeOfDay(),
+              mapXOffset,
+              mapYOffset,
+              pixelOrigin
+            );
+        }
+
+        if (isShowStationsChecked) {
+            drawStationPopup(
+              p,
               mapXOffset,
               mapYOffset,
               pixelOrigin
