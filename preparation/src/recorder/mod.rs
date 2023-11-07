@@ -15,21 +15,22 @@ use reqwest::Client;
 use serde::Serialize;
 use thiserror::Error;
 use tokio::task::yield_now;
-use tracing::{debug, error, info, info_span, trace, warn, Instrument};
+use tracing::{debug, error, info, info_span, warn, Instrument};
 
 pub mod formats;
 
 use crate::{
     api::{
         routes::fetch_all_routes,
-        routes_on_station::{fetch_routes_on_station, TripOnStation},
-        station_details::{fetch_station_details, StationDetails},
+        routes_on_station::fetch_routes_on_station,
+        station_details::fetch_station_details,
         stations_on_route::fetch_stations_on_route,
         timetable::{fetch_timetable, TimetableFetchMode, TripTimetable},
         BusRoute,
         StationCode,
     },
     cancellation_token::CancellationToken,
+    cli::RunMode,
     configuration::LppConfiguration,
     recorder::formats::{
         AllRoutesSnapshot,
@@ -384,6 +385,7 @@ async fn station_and_route_details_snapshot_loop(
     configuration: LppConfiguration,
     client: Client,
     cancellation_token: CancellationToken,
+    run_mode: RunMode,
 ) -> Result<()> {
     let stations_storage = configuration
         .recording
@@ -414,9 +416,10 @@ async fn station_and_route_details_snapshot_loop(
 
         info!("Station and route snapshot complete.");
 
-        // DEBUGONLY
-        info!("DEBUGONLY: exiting after one snapshot");
-        return Ok(());
+        if run_mode == RunMode::Once {
+            info!("Run mode is \"once\", exiting.");
+            return Ok(());
+        }
 
 
         // Wait for the configured amount of time
@@ -425,7 +428,7 @@ async fn station_and_route_details_snapshot_loop(
 
         let time_to_wait_until_next_capture = configuration
             .recording
-            .station_details_fetching_interval
+            .full_station_and_timetable_details_request_interval
             .saturating_sub(time_since_start_of_request);
 
         info!(
@@ -445,17 +448,23 @@ pub fn initialize_station_and_route_details_snapshot_task(
     config: &LppConfiguration,
     http_client: Client,
     cancellation_token: CancellationToken,
+    run_mode: RunMode,
 ) -> tokio::task::JoinHandle<Result<()>> {
     let station_fetching_span = info_span!("station-details-recorder");
-    let station_details_fetching_future =
-        station_and_route_details_snapshot_loop(config.clone(), http_client, cancellation_token)
-            .instrument(station_fetching_span);
+    let station_details_fetching_future = station_and_route_details_snapshot_loop(
+        config.clone(),
+        http_client,
+        cancellation_token,
+        run_mode,
+    )
+    .instrument(station_fetching_span);
 
     info!("Spawning station details recorder task.");
     tokio::task::spawn(station_details_fetching_future)
 }
 
 
+#[allow(dead_code)]
 pub enum RetryableResult<O, E>
 where
     E: Error,

@@ -4,3 +4,7 @@
 ## IDE files
 .idea
 .vscode
+
+## Sensitive files
+data/*.toml
+!data/*.EXAMPLE.toml

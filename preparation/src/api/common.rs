@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
 use serde::{de::Error, Deserialize, Serialize};
-use tracing::warn;
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::errors::RouteNameParseError;

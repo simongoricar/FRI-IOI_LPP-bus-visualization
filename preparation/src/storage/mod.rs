@@ -154,11 +154,13 @@ impl ArrivalStorageRoot {
 }
 
 
+#[allow(dead_code)]
 pub struct ArrivalStorage {
     full_route_name: String,
     arrival_storage_path: PathBuf,
 }
 
+#[allow(dead_code)]
 impl ArrivalStorage {
     pub fn new<P, N>(arrival_storage_root_path: P, route_name: N) -> Result<Self, StorageError>
     where

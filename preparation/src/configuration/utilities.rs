@@ -22,6 +22,7 @@ pub fn get_default_configuration_file_path() -> Result<PathBuf> {
 }
 
 #[must_use = "function returns the modified path"]
+#[allow(dead_code)]
 pub fn replace_placeholders_in_path(
     original_path: &Path,
     placeholders: HashMap<&'static str, String>,

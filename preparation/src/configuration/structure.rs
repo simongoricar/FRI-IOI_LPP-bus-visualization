@@ -1,14 +1,13 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
     time::Duration,
 };
 
 use miette::{miette, Context, IntoDiagnostic, Result};
 use reqwest::Url;
 use serde::Deserialize;
-use tracing::Level;
+use tracing_subscriber::EnvFilter;
 
 use super::{traits::ResolvableConfiguration, utilities::get_default_configuration_file_path};
 use crate::storage::StorageRoot;
@@ -75,15 +74,15 @@ impl ResolvableConfiguration for UnresolvedConfiguration {
 
 #[derive(Deserialize, Clone)]
 struct UnresolvedLoggingConfiguration {
-    console_output_level: String,
-    log_file_output_level: String,
+    console_output_level_filter: String,
+    log_file_output_level_filter: String,
     log_file_output_directory: String,
 }
 
 #[derive(Clone)]
 pub struct LoggingConfiguration {
-    pub console_output_level: Level,
-    pub log_file_output_level: Level,
+    pub console_output_level_filter: String,
+    pub log_file_output_level_filter: String,
     pub log_file_output_directory: PathBuf,
 }
 
@@ -91,25 +90,34 @@ impl ResolvableConfiguration for UnresolvedLoggingConfiguration {
     type Resolved = LoggingConfiguration;
 
     fn resolve(self) -> Result<Self::Resolved> {
-        let console_output_level = Level::from_str(&self.console_output_level)
+        // Validate the file and console level filters.
+        EnvFilter::try_new(&self.console_output_level_filter)
             .into_diagnostic()
-            .wrap_err_with(|| {
-                miette!("Failed to parse field `console_output_level` as a valid logging level.")
-            })?;
+            .wrap_err_with(|| miette!("Failed to parse field `console_output_level_filter`"))?;
 
-        let log_file_output_level = Level::from_str(&self.log_file_output_level)
+        EnvFilter::try_new(&self.log_file_output_level_filter)
             .into_diagnostic()
-            .wrap_err_with(|| {
-                miette!("Failed to parse field `log_file_output_level` as a valid logging level.")
-            })?;
+            .wrap_err_with(|| miette!("Failed to parse field `log_file_output_level_filter`"))?;
 
         let log_file_output_directory = PathBuf::from(self.log_file_output_directory);
 
         Ok(Self::Resolved {
-            console_output_level,
-            log_file_output_level,
+            console_output_level_filter: self.console_output_level_filter,
+            log_file_output_level_filter: self.log_file_output_level_filter,
             log_file_output_directory,
         })
+    }
+}
+
+impl LoggingConfiguration {
+    pub fn console_output_level_filter(&self) -> EnvFilter {
+        // SAFETY: This is safe because we checked the input is valid in `resolve`.
+        EnvFilter::try_new(&self.console_output_level_filter).unwrap()
+    }
+
+    pub fn log_file_output_level_filter(&self) -> EnvFilter {
+        // SAFETY: This is safe because we checked the input is valid in `resolve`.
+        EnvFilter::try_new(&self.log_file_output_level_filter).unwrap()
     }
 }
 
@@ -171,15 +179,13 @@ impl ResolvableConfiguration for UnresolvedLppApiConfiguration {
 
 #[derive(Deserialize, Clone)]
 struct UnresolvedLppRecordingConfiguration {
-    station_details_fetching_interval: String,
-    route_details_fetching_interval: String,
+    full_station_and_timetable_details_request_interval: String,
     recording_storage_directory_path: String,
 }
 
 #[derive(Clone)]
 pub struct LppRecordingConfiguration {
-    pub station_details_fetching_interval: Duration,
-    pub route_details_fetching_interval: Duration,
+    pub full_station_and_timetable_details_request_interval: Duration,
     pub recording_storage_root: StorageRoot,
 }
 
@@ -187,23 +193,13 @@ impl ResolvableConfiguration for UnresolvedLppRecordingConfiguration {
     type Resolved = LppRecordingConfiguration;
 
     fn resolve(self) -> Result<Self::Resolved> {
-        let station_details_fetching_interval =
-            humantime::parse_duration(&self.station_details_fetching_interval)
+        let full_station_and_timetable_details_request_interval =
+            humantime::parse_duration(&self.full_station_and_timetable_details_request_interval)
                 .into_diagnostic()
                 .wrap_err_with(|| {
                     miette!(
-                        "Failed to parse duration in field `station_details_fetching_interval`. \
+                        "Failed to parse duration in field `full_station_and_timetable_details_request_interval`. \
                         Did you include spaces (e.g. `6 hours` instead of `6hours`)?"
-                    )
-                })?;
-
-        let route_details_fetching_interval =
-            humantime::parse_duration(&self.route_details_fetching_interval)
-                .into_diagnostic()
-                .wrap_err_with(|| {
-                    miette!(
-                        "Failed to parse duration in field `route_details_fetching_interval`. \
-                    Did you include spaces (e.g. `6 hours` instead of `6hours`)?"
                     )
                 })?;
 
@@ -211,8 +207,7 @@ impl ResolvableConfiguration for UnresolvedLppRecordingConfiguration {
 
 
         Ok(Self::Resolved {
-            station_details_fetching_interval,
-            route_details_fetching_interval,
+            full_station_and_timetable_details_request_interval,
             recording_storage_root: storage_root,
         })
     }

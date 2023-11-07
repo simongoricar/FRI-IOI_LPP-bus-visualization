@@ -16,6 +16,7 @@ impl CancellationToken {
         self.is_cancelled.load(atomic::Ordering::SeqCst)
     }
 
+    #[allow(dead_code)]
     pub fn cancel(&self) {
         self.is_cancelled.store(true, atomic::Ordering::SeqCst);
     }

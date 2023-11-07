@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use miette::{miette, Result};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};

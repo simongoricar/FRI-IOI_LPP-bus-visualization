@@ -44,10 +44,6 @@ pub enum LppApiFetchError {
 }
 
 impl LppApiFetchError {
-    pub fn malformed_response() -> Self {
-        Self::APIResponseMalformed { reason: None }
-    }
-
     pub fn malformed_response_with_reason<S>(reason: S) -> Self
     where
         S: Into<String>,

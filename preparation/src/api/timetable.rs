@@ -417,6 +417,7 @@ pub enum TimetableFetchMode {
 
     /// Capture timetables for up to `previous_hours` before
     /// and `next_hours` after fetching.
+    #[allow(dead_code)]
     Manual {
         next_hours: u32,
         previous_hours: u32,

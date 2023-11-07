@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use miette::miette;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -267,7 +269,12 @@ impl TryFrom<RawGeoJSONShape> for RouteGeoJsonShape {
 #[derive(Clone, PartialEq, Eq)]
 enum RouteRequestType {
     AllRoutes,
-    SingleRoute { route_id: String, with_shape: bool },
+
+    #[allow(dead_code)]
+    SingleRoute {
+        route_id: String,
+        with_shape: bool,
+    },
 }
 
 

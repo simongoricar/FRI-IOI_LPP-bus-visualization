@@ -1,10 +1,8 @@
 use std::path::Path;
 
 use miette::Result;
-use tracing::Level;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
-    filter::LevelFilter,
     prelude::__tracing_subscriber_SubscriberExt,
     util::SubscriberInitExt,
     EnvFilter,
@@ -20,8 +18,8 @@ use tracing_subscriber::{
 /// [`WorkerGuard`](../tracing_appender/non_blocking/struct.WorkerGuard.html)
 /// in scope, otherwise flushing to file will stop.**
 pub fn initialize_tracing<P>(
-    console_level: Level,
-    log_file_level: Level,
+    console_level_filter: EnvFilter,
+    log_file_level_filter: EnvFilter,
     log_file_directory_path: P,
 ) -> Result<WorkerGuard>
 where
@@ -37,12 +35,14 @@ where
             .log_internal_errors(true)
             .event_format(console_tracing_format);
 
-        let console_level_filter_layer = LevelFilter::from(console_level);
-        let env_filter = EnvFilter::from_default_env();
+        let level_filter = if std::env::var("RUST_LOG").is_err() {
+            // If RUST_LOG is unset, use the configuration default.
+            console_level_filter
+        } else {
+            EnvFilter::from_default_env()
+        };
 
-        console_layer
-            .with_filter(console_level_filter_layer)
-            .with_filter(env_filter)
+        console_layer.with_filter(level_filter)
     };
 
     let (file_layer, file_guard) = {
@@ -61,10 +61,8 @@ where
             .log_internal_errors(true)
             .event_format(file_tracing_format);
 
-        let file_subscriber_filter_layer = LevelFilter::from(log_file_level);
-
         (
-            file_subscriber.with_filter(file_subscriber_filter_layer),
+            file_subscriber.with_filter(log_file_level_filter),
             guard,
         )
     };
