@@ -9,7 +9,7 @@ It was developed as seminar work as part of a computer science course on
 
 <img
   alt="Visualization demonstration GIF"
-  src="https://raw.githubusercontent.com/DefaultSimon/LPP-bus-visualization/master/assets/lpp-bus-viszalization-demo-v9.gif" 
+  src="https://media.githubusercontent.com/media/DefaultSimon/LPP-bus-visualization/master/assets/lpp-bus-visualization-demo-v9.gif" 
   width="100%" height="auto"
 />
 
