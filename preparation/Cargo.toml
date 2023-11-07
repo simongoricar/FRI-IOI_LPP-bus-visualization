@@ -4,6 +4,7 @@ version = "1.0.0"
 edition = "2021"
 license = "GPL-3.0-only"
 authors = ["Simon Goričar <simon.peter.goricar@gmail.com>"]
+rust-version = "1.70.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
