@@ -19,6 +19,9 @@ node_modules
 ## IDEs
 .idea
 
+## Large/binary files
+public/fonts
+
 ## Sensitive files
 src/secrets.ts
 !src/secrets.TEMPLATE.ts

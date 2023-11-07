@@ -35,7 +35,7 @@ class Droplet {
 
     hasFinished(currentTime: TimeOfDay) {
         return this.timeSinceInitialization(currentTime).getTotalMinutes()
-          >= dropletLifetimeInSimulatedMinutes;
+            >= dropletLifetimeInSimulatedMinutes;
     }
 }
 
@@ -48,15 +48,16 @@ class StationPopup {
     public stationCode: string;
 
     constructor(
-      popupAnchorLocation: LatLng,
-      stationName: string,
-      stationCode: string,
+        popupAnchorLocation: LatLng,
+        stationName: string,
+        stationCode: string,
     ) {
         this.popupAnchorLocation = popupAnchorLocation;
         this.stationName = stationName;
         this.stationCode = stationCode;
     }
 }
+
 /**
  * Load all available station snapshot files (see `data.TEMPLATE.ts`/`data.ts`).
  */
@@ -73,7 +74,7 @@ async function loadAllAvailableStationSnapshots(): Promise<AllStationsSnapshot[]
         stationSnapshots.push(snapshot);
 
         log.info(
-          `Loaded stations snapshot "${stationSnapshotFilename}"`
+            `Loaded stations snapshot "${stationSnapshotFilename}"`
         );
 
         currentSnapshotIndex += 1;
@@ -86,6 +87,7 @@ async function loadAllAvailableStationSnapshots(): Promise<AllStationsSnapshot[]
 
 /**
  * Load all available route snapshot files (see `data.TEMPLATE.ts`/`data.ts`).
+ * Currently unused.
  */
 async function loadAllAvailableRouteSnapshots(): Promise<AllRoutesSnapshot[]> {
     let routeSnapshots: AllRoutesSnapshot[] = [];
@@ -100,7 +102,7 @@ async function loadAllAvailableRouteSnapshots(): Promise<AllRoutesSnapshot[]> {
         routeSnapshots.push(snapshot);
 
         log.info(
-          `Loaded route snapshot "${routeSnapshotFilename}"`
+            `Loaded route snapshot "${routeSnapshotFilename}"`
         );
 
         currentSnapshotIndex += 1;
@@ -158,7 +160,7 @@ function selectStationSnapshot(snapshotIndex: number) {
     }
 
     dateLabelElement.innerText =
-      `${String(day).padStart(2, " ")}. ${String(month).padStart(2, " ")}. ${year} (${dayOfWeekDescribed})`;
+        `${String(day).padStart(2, " ")}. ${String(month).padStart(2, " ")}. ${year} (${dayOfWeekDescribed})`;
 
 
     // Perform other initialization.
@@ -254,10 +256,10 @@ function handleCanvasClick(event: MouseEvent) {
 
     const mouseClickPoint = new Point(event.offsetX, event.offsetY);
     const latLngOfClick = canvasPixelToLocation(
-      mouseClickPoint,
-      mapXOffset,
-      mapYOffset,
-      pixelOrigin,
+        mouseClickPoint,
+        mapXOffset,
+        mapYOffset,
+        pixelOrigin,
     );
 
     log.debug(`Mouse clicked at ${event.offsetX}, ${event.offsetY}, which is at ${latLngOfClick.lat}, ${latLngOfClick.lng}`);
@@ -275,10 +277,10 @@ function handleCanvasClick(event: MouseEvent) {
     // Project the station location back to pixels, so we can measure how far off
     // the user clicked.
     const closestStationPixelLocation = locationToCanvasPixel(
-      new LatLng(closestStation.location.latitude, closestStation.location.longitude),
-      mapXOffset,
-      mapYOffset,
-      pixelOrigin,
+        new LatLng(closestStation.location.latitude, closestStation.location.longitude),
+        mapXOffset,
+        mapYOffset,
+        pixelOrigin,
     );
 
     const pixelClickDistance = closestStationPixelLocation.distanceTo(mouseClickPoint);
@@ -289,14 +291,14 @@ function handleCanvasClick(event: MouseEvent) {
     }
 
     log.info(
-      `User clicked near a station, will display popup: ${closestStation.name} (${closestStation.stationCode}).`
+        `User clicked near a station, will display popup: ${closestStation.name} (${closestStation.stationCode}).`
     );
 
     currentStationPopup = new StationPopup(
-      closestStation.location.leafletLatLng(),
-      closestStation.name,
-      closestStation.stationCode,
-    )
+        closestStation.location.leafletLatLng(),
+        closestStation.name,
+        closestStation.stationCode,
+    );
 }
 
 /**
@@ -387,7 +389,6 @@ const fastForwardedRealTimeSecondsPerSimulatedMinute = 1 / fastForwardedSimulati
 let currentRealTimeSecondsPerSimulatedMinute = realTimeSecondsPerSimulatedMinute;
 let isFastForwarding = false;
 
-let availableRouteSnapshots: AllRoutesSnapshot[];
 let availableStationSnapshots: AllStationsSnapshot[];
 
 let selectedStationSnapshotIndex: number;
@@ -442,16 +443,16 @@ let showArrivalsCheckboxElement: HTMLInputElement;
  * @param mapPixelOrigin Leaflet map pixel origin.
  */
 function locationToCanvasPixel(
-  location: LatLng,
-  mapXOffset: number,
-  mapYOffset: number,
-  mapPixelOrigin: Point,
+    location: LatLng,
+    mapXOffset: number,
+    mapYOffset: number,
+    mapPixelOrigin: Point,
 ): Point {
     let pixelLocation = map.map.project(
-      location,
-      map.map.getZoom()
+        location,
+        map.map.getZoom()
     )
-      .subtract(mapPixelOrigin);
+        .subtract(mapPixelOrigin);
 
     pixelLocation.x += mapXOffset;
     pixelLocation.y += mapYOffset;
@@ -468,18 +469,18 @@ function locationToCanvasPixel(
  * @param mapPixelOrigin Leaflet map pixel origin.
  */
 function canvasPixelToLocation(
-  pixel: Point,
-  mapXOffset: number,
-  mapYOffset: number,
-  mapPixelOrigin: Point,
+    pixel: Point,
+    mapXOffset: number,
+    mapYOffset: number,
+    mapPixelOrigin: Point,
 ): LatLng {
     let pixelCloned = pixel.clone();
     pixelCloned.x += mapXOffset;
     pixelCloned.y += mapYOffset;
 
     return map.map.unproject(
-      pixel.add(mapPixelOrigin),
-      map.map.getZoom(),
+        pixel.add(mapPixelOrigin),
+        map.map.getZoom(),
     );
 }
 
@@ -491,10 +492,10 @@ function canvasPixelToLocation(
  * @param timeDeltaSinceLastDraw
  */
 function updateDroplets(
-  timeDeltaSinceLastDraw: number,
+    timeDeltaSinceLastDraw: number,
 ) {
     const freshArrivalSets = playback.tick(
-      timeDeltaSinceLastDraw / currentRealTimeSecondsPerSimulatedMinute
+        timeDeltaSinceLastDraw / currentRealTimeSecondsPerSimulatedMinute
     );
 
     for (const arrivalSet of freshArrivalSets) {
@@ -507,7 +508,7 @@ function updateDroplets(
     }
 
     activeDroplets = activeDroplets.filter(
-      droplet => !droplet.hasFinished(playback.getTimeOfDay())
+        droplet => !droplet.hasFinished(playback.getTimeOfDay())
     );
 }
 
@@ -531,7 +532,7 @@ function getElementByIdOrThrow(elementId: string): HTMLElement {
  * @param content Heading content.
  */
 function updateLoadingHeading(
-  content: string
+    content: string
 ) {
     loadingHeadingElement.innerText = content;
 }
@@ -542,7 +543,7 @@ function updateLoadingHeading(
  * @param details Subtitle content.
  */
 function updateLoadingDetails(
-  details: string
+    details: string
 ) {
     loadingDetailsElement.innerText = details;
 }
@@ -573,20 +574,20 @@ function hideLoadingScreen() {
  * @param mapPixelOrigin Leaflet map pixel origin.
  */
 function drawStations(
-  p: p5,
-  mapXOffset: number,
-  mapYOffset: number,
-  mapPixelOrigin: Point,
+    p: p5,
+    mapXOffset: number,
+    mapYOffset: number,
+    mapPixelOrigin: Point,
 ) {
     p.strokeWeight(0);
     p.fill(stationCircleColor);
 
     for (const station of selectedStationSnapshot.stationDetails) {
         const stationPixelPosition = locationToCanvasPixel(
-          station.location.leafletLatLng(),
-          mapXOffset,
-          mapYOffset,
-          mapPixelOrigin
+            station.location.leafletLatLng(),
+            mapXOffset,
+            mapYOffset,
+            mapPixelOrigin
         );
 
         // log.debug(
@@ -594,9 +595,9 @@ function drawStations(
         // );
 
         p.circle(
-          stationPixelPosition.x,
-          stationPixelPosition.y,
-          stationCircleRadius,
+            stationPixelPosition.x,
+            stationPixelPosition.y,
+            stationCircleRadius,
         );
     }
 }
@@ -612,37 +613,37 @@ function drawStations(
  * @param mapPixelOrigin Leaflet map pixel origin.
  */
 function drawDroplets(
-  p: p5,
-  currentSimulationTime: TimeOfDay,
-  mapXOffset: number,
-  mapYOffset: number,
-  mapPixelOrigin: Point,
+    p: p5,
+    currentSimulationTime: TimeOfDay,
+    mapXOffset: number,
+    mapYOffset: number,
+    mapPixelOrigin: Point,
 ) {
     p.strokeWeight(0);
 
     for (let droplet of activeDroplets) {
         const transitionPercentage = clamp(
-          droplet.timeSinceInitialization(currentSimulationTime).getTotalMinutes()
+            droplet.timeSinceInitialization(currentSimulationTime).getTotalMinutes()
             / dropletLifetimeInSimulatedMinutes,
-          0,
-          1,
+            0,
+            1,
         );
 
         const sizeInPixels = p.lerp(dropletInitialRadius, dropletFinalRadius, transitionPercentage);
-        const dropletColor = p.lerpColor(dropletInitialColor, dropletFinalColor, transitionPercentage)
+        const dropletColor = p.lerpColor(dropletInitialColor, dropletFinalColor, transitionPercentage);
 
         const stationPixelPosition = locationToCanvasPixel(
-          droplet.location,
-          mapXOffset,
-          mapYOffset,
-          mapPixelOrigin
+            droplet.location,
+            mapXOffset,
+            mapYOffset,
+            mapPixelOrigin
         );
 
         p.fill(dropletColor);
         p.circle(
-          stationPixelPosition.x,
-          stationPixelPosition.y,
-          sizeInPixels,
+            stationPixelPosition.x,
+            stationPixelPosition.y,
+            sizeInPixels,
         );
     }
 }
@@ -656,20 +657,20 @@ function drawDroplets(
  * @param mapPixelOrigin Leaflet map pixel origin.
  */
 function drawStationPopup(
-  p: p5,
-  mapXOffset: number,
-  mapYOffset: number,
-  mapPixelOrigin: Point,
+    p: p5,
+    mapXOffset: number,
+    mapYOffset: number,
+    mapPixelOrigin: Point,
 ) {
     if (currentStationPopup === null) {
         return;
     }
 
     const popupOrigin = locationToCanvasPixel(
-      currentStationPopup.popupAnchorLocation,
-      mapXOffset,
-      mapYOffset,
-      mapPixelOrigin
+        currentStationPopup.popupAnchorLocation,
+        mapXOffset,
+        mapYOffset,
+        mapPixelOrigin
     );
 
     const popupText = `${currentStationPopup.stationName} (${currentStationPopup.stationCode})`;
@@ -681,9 +682,9 @@ function drawStationPopup(
     p.textFont(font);
 
     const textBoundingBox = font.textBounds(
-      popupText,
-      popupTextXPosition,
-      popupTextYPosition + stationPopupTextOnlyYOffset
+        popupText,
+        popupTextXPosition,
+        popupTextYPosition + stationPopupTextOnlyYOffset
     );
     // @ts-ignore
     const { w: textWidth, h: textHeight } = textBoundingBox;
@@ -698,29 +699,29 @@ function drawStationPopup(
     const triangleBottomTipY = popupOrigin.y + stationPopupTriangleYOffset;
 
     p.triangle(
-      triangleTopXCenter - stationPopupTriangleCenterOffset,
-      triangleTopY,
-      triangleTopXCenter + stationPopupTriangleCenterOffset,
-      triangleTopY,
-      triangleBottomTipX,
-      triangleBottomTipY,
-    )
+        triangleTopXCenter - stationPopupTriangleCenterOffset,
+        triangleTopY,
+        triangleTopXCenter + stationPopupTriangleCenterOffset,
+        triangleTopY,
+        triangleBottomTipX,
+        triangleBottomTipY,
+    );
 
     p.rectMode("center");
     p.rect(
-      popupTextXPosition,
-      popupTextYPosition + stationPopupTextOnlyYOffset,
-      textWidth + 2 * stationPopupTextPadding,
-      textHeight + 2 * stationPopupTextPadding,
-      stationPopupRectRoundedBorders
+        popupTextXPosition,
+        popupTextYPosition + stationPopupTextOnlyYOffset,
+        textWidth + 2 * stationPopupTextPadding,
+        textHeight + 2 * stationPopupTextPadding,
+        stationPopupRectRoundedBorders
     );
 
 
     p.fill(stationPopupTextColor);
     p.text(
-      popupText,
-      popupTextXPosition,
-      popupTextYPosition
+        popupText,
+        popupTextXPosition,
+        popupTextYPosition
     );
 }
 
@@ -765,9 +766,9 @@ const p5Sketch = (p: p5) => {
         timeLabelMinuteElement = getElementByIdOrThrow("show-time-minute-span");
 
         showStationsCheckboxElement =
-          getElementByIdOrThrow("option-show-stations-input") as HTMLInputElement;
+            getElementByIdOrThrow("option-show-stations-input") as HTMLInputElement;
         showArrivalsCheckboxElement =
-          getElementByIdOrThrow("option-show-arrivals-input") as HTMLInputElement;
+            getElementByIdOrThrow("option-show-arrivals-input") as HTMLInputElement;
 
         lastDrawTime = new Date();
 
@@ -794,7 +795,7 @@ const p5Sketch = (p: p5) => {
         map.canvas.addEventListener("click", handleCanvasClick);
 
         hideLoadingScreen();
-    }
+    };
 
     p.draw = () => {
         // @ts-ignore
@@ -816,10 +817,10 @@ const p5Sketch = (p: p5) => {
         // We draw this first because everything else should be drawn above the stations.
         if (isShowStationsChecked) {
             drawStations(
-              p,
-              mapXOffset,
-              mapYOffset,
-              pixelOrigin
+                p,
+                mapXOffset,
+                mapYOffset,
+                pixelOrigin
             );
         }
 
@@ -836,29 +837,29 @@ const p5Sketch = (p: p5) => {
 
         if (isShowArrivalsChecked) {
             drawDroplets(
-              p,
-              playback.getTimeOfDay(),
-              mapXOffset,
-              mapYOffset,
-              pixelOrigin
+                p,
+                playback.getTimeOfDay(),
+                mapXOffset,
+                mapYOffset,
+                pixelOrigin
             );
         }
 
         // We draw this last because the station popup must always be on top ov everything else.
         if (isShowStationsChecked) {
             drawStationPopup(
-              p,
-              mapXOffset,
-              mapYOffset,
-              pixelOrigin
+                p,
+                mapXOffset,
+                mapYOffset,
+                pixelOrigin
             );
         }
 
         lastDrawTime = currentTime;
-    }
+    };
 };
 
-document.addEventListener("DOMContentLoaded", async function () {
+document.addEventListener("DOMContentLoaded", async function() {
     rootAppElement = getElementByIdOrThrow("app");
 
     document.body.addEventListener("keydown", handleKeyboardInput);
@@ -867,15 +868,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     loadingDetailsElement = getElementByIdOrThrow("loading-details-span");
 
     previousDayButtonElement =
-      getElementByIdOrThrow("previous-day-button") as HTMLButtonElement;
+        getElementByIdOrThrow("previous-day-button") as HTMLButtonElement;
     nextDayButtonElement =
-      getElementByIdOrThrow("next-day-button") as HTMLButtonElement;
+        getElementByIdOrThrow("next-day-button") as HTMLButtonElement;
     timeContainerElement = getElementByIdOrThrow("time-container");
 
     resetTimeButtonElement =
-      getElementByIdOrThrow("reset-time-toggle") as HTMLButtonElement;
+        getElementByIdOrThrow("reset-time-toggle") as HTMLButtonElement;
     fastForwardTimeToggleElement =
-      getElementByIdOrThrow("fast-forward-time-toggle") as HTMLInputElement;
+        getElementByIdOrThrow("fast-forward-time-toggle") as HTMLInputElement;
 
     previousDayButtonElement.addEventListener("click", goToPreviousDay);
     nextDayButtonElement.addEventListener("click", goToNextDay);
@@ -884,11 +885,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     resetTimeButtonElement.addEventListener("click", resetDay);
     fastForwardTimeToggleElement.addEventListener("click", toggleFastForwardSimulation);
 
-    updateLoadingDetails("postaje");
+    updateLoadingDetails("postaje in prihode");
     availableStationSnapshots = await loadAllAvailableStationSnapshots();
-
-    updateLoadingDetails("avtobuse");
-    availableRouteSnapshots = await loadAllAvailableRouteSnapshots();
 
     updateLoadingDetails("vizualizacijo");
 
